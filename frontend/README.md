@@ -1,75 +1,156 @@
-# React + TypeScript + Vite
+# **Frontend – React + Vite + TypeScript**
+A fast, modern frontend built with **React**, **Vite**, **TypeScript**, and **Ant Design Pro**.  
+This application provides the UI for the Booking System and communicates with the backend API.
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+---
 
-Currently, two official plugins are available:
+## **🚀 Features**
+- React 18 + TypeScript  
+- Vite for ultra‑fast dev & build  
+- Ant Design ProTable for rich data tables  
+- Axios API client  
+- Routing with React Router  
+- Environment‑based API configuration  
+- Fully typed Room, Booking, and User models  
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+---
 
-## React Compiler
+## **📦 Installation**
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-
+### **1. Navigate to the frontend folder**
+```bash
+cd frontend
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+### **2. Install dependencies**
+```bash
+npm install
+```
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+or
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+yarn install
+```
+
+---
+
+## **▶️ Running the App**
+
+### **Development mode**
+```bash
+npm run dev
+```
+
+This starts Vite’s dev server at:
 
 ```
+http://localhost:5173
+```
+
+---
+
+## **🏗️ Build for Production**
+```bash
+npm run build
+```
+
+Output goes to:
+
+```
+frontend/dist/
+```
+
+---
+
+## **🔧 Environment Variables**
+
+Create a `.env` file inside `frontend/`:
+
+```
+VITE_API_URL=http://localhost:8080
+```
+
+Your Axios client uses this value automatically.
+
+---
+
+## **📁 Project Structure**
+
+```
+frontend/
+│
+├── src/
+│   ├── api/
+│   │   └── axios.ts        # Axios instance
+│   ├── pages/
+│   │   ├── Rooms.tsx       # Rooms table
+│   │   ├── Bookings.tsx    # Booking page
+│   │   └── Login.tsx       # Auth page
+│   ├── components/
+│   ├── hooks/
+│   ├── types/
+│   │   └── Room.ts         # Room interface
+│   ├── App.tsx
+│   └── main.tsx
+│
+├── public/
+├── index.html
+├── package.json
+└── vite.config.ts
+```
+
+---
+
+## **🔌 API Communication**
+
+All API calls use the Axios instance:
+
+```ts
+import axios from "../api/axios";
+
+const res = await axios.get("/api/rooms");
+```
+
+Backend base URL is automatically injected from:
+
+```
+VITE_API_URL
+```
+
+---
+
+## **🎨 UI Framework**
+
+The project uses:
+
+- **Ant Design**
+- **Ant Design Pro Components**
+- **ConfigProvider locale = enUS** (English UI)
+
+---
+
+## **🧪 Testing (optional)**
+
+If you add tests later:
+
+```bash
+npm run test
+```
+
+---
+
+## **📜 Scripts Overview**
+
+| Script | Description |
+|--------|-------------|
+| `npm run dev` | Start development server |
+| `npm run build` | Build production bundle |
+| `npm run preview` | Preview production build |
+| `npm run lint` | Run ESLint |
+
+---
+
+## **📄 License**
+This project is part of your personal development portfolio.  
+Feel free to modify and extend as needed.

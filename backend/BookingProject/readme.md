@@ -1,19 +1,20 @@
 # 📘 **BookingProject – Spring Boot + MongoDB + JWT Authentication**
 
-A production‑ready backend for a hotel booking system built with **Spring Boot 4.1**, **Java 21**, **MongoDB**, **Spring Security**, and **JWT authentication**.  
-Includes user management, room management, and booking logic.
+A production‑ready backend for a hotel booking system built with **Spring Boot**, **Java 21**, **MongoDB**, **Spring Security**, and **JWT authentication**.  
+Provides APIs for **rooms**, **bookings**, and **users**, consumed by the React frontend.
 
 ---
 
 ## 🚀 Features
 
-- 🔐 **JWT Authentication** (login, signup)
-- 👤 **User Management** (CRUD, admin endpoints)
-- 🏨 **Room Management** (create, update, list)
-- 📅 **Booking System** (create bookings, check availability)
+- 🔐 **JWT Authentication** (signup, login)
+- 👤 **User Management** (CRUD, roles)
+- 🏨 **Room Management** (room number, type, capacity, price, availability)
+- 📅 **Booking System** (create bookings, prevent double‑booking)
 - 🗄️ **MongoDB Integration**
-- 🛡️ **Spring Security 6**
+- 🛡️ **Spring Security**
 - 🧰 **Lombok** for clean models
+- 🌱 **Database Seeder** for initial rooms
 - 🧪 **Postman Collection** included
 
 ---
@@ -22,10 +23,10 @@ Includes user management, room management, and booking logic.
 
 | Component | Technology |
 |----------|------------|
-| Backend | Spring Boot 4.1 |
+| Backend | Spring Boot |
 | Language | Java 21 |
 | Database | MongoDB |
-| Auth | JWT (JJWT 0.11.5) |
+| Auth | JWT |
 | Build Tool | Maven |
 | Models | Lombok |
 | Security | Spring Security |
@@ -38,7 +39,7 @@ Includes user management, room management, and booking logic.
 
 ```bash
 git clone https://github.com/yourusername/BookingProject.git
-cd BookingProject
+cd backend/BookingProject
 ```
 
 ---
@@ -51,17 +52,11 @@ Verify:
 java -version
 ```
 
-Should output:
-
-```
-openjdk version "21.x.x"
-```
-
 ---
 
 ### 3️⃣ Install MongoDB
 
-On Ubuntu:
+Ubuntu:
 
 ```bash
 sudo apt install -y mongodb
@@ -72,7 +67,7 @@ sudo systemctl enable mongodb
 Verify:
 
 ```bash
-mongo --version
+mongosh --version
 ```
 
 ---
@@ -98,13 +93,13 @@ server.port=8080
 
 ## ▶️ Running the Application
 
-### **Development mode**
+### Development mode
 
 ```bash
 mvn spring-boot:run
 ```
 
-### **Production build**
+### Production build
 
 ```bash
 mvn clean install
@@ -113,9 +108,31 @@ java -jar target/BookingProject-0.0.1-SNAPSHOT.jar
 
 ---
 
+## 🌱 Database Seeder
+
+On startup, the backend seeds initial rooms:
+
+- Room numbers (101, 102, 201…)
+- Types (Single, Double, Suite)
+- Capacity
+- Price
+- Availability
+
+If you clear MongoDB:
+
+```bash
+mongosh
+use bookingdb
+db.dropDatabase()
+```
+
+Restart backend → rooms are recreated.
+
+---
+
 ## 🧪 Postman Collection
 
-A full Postman collection is included in:
+Included in:
 
 ```
 BookingProject.postman_collection.json
@@ -123,11 +140,11 @@ BookingProject.postman_collection.json
 
 Import it into Postman to test:
 
-- Signup
-- Login
-- Users
-- Rooms
-- Bookings
+- Signup  
+- Login  
+- Users  
+- Rooms  
+- Bookings  
 
 Set the `token` variable after login.
 
@@ -135,13 +152,13 @@ Set the `token` variable after login.
 
 ## 🔐 Authentication Flow
 
-1. **Signup**
+### 1. Signup
 
 ```
 POST /api/auth/signup
 ```
 
-2. **Login**
+### 2. Login
 
 ```
 POST /api/auth/login
@@ -155,7 +172,7 @@ Response:
 }
 ```
 
-3. Use token in all protected endpoints:
+Use token:
 
 ```
 Authorization: Bearer <token>
@@ -166,14 +183,14 @@ Authorization: Bearer <token>
 ## 📁 Project Structure
 
 ```
-backend/
+backend/BookingProject
  ├── src/main/java/com/kostas/bookingproject
- │    ├── auth/
- │    ├── controllers/
- │    ├── models/
- │    ├── repositories/
- │    ├── services/
- │    ├── security/
+ │    ├── auth/              # JWT, login, signup
+ │    ├── controllers/       # REST controllers
+ │    ├── models/            # Room, Booking, User
+ │    ├── repositories/      # MongoDB repositories
+ │    ├── services/          # Business logic
+ │    ├── security/          # JWT filters, config
  │    └── BookingProjectApplication.java
  ├── src/main/resources/
  │    └── application.properties
@@ -243,4 +260,5 @@ backend/
 
 ## 📝 License
 
-This project is open‑source and free to use.
+This project is part of your personal development portfolio.  
+Feel free to extend and customize it.
