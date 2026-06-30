@@ -1,0 +1,92 @@
+############################
+# Global OS junk
+############################
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*.tmp
+*.bak
+*.lock
+
+############################
+# Environment files
+############################
+.env
+.env.*
+*.local
+
+############################
+# Logs
+############################
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+############################
+# Frontend (React + Vite)
+############################
+frontend/node_modules/
+frontend/dist/
+frontend/dist-ssr/
+frontend/build/
+frontend/.vite/
+frontend/.cache/
+frontend/coverage/
+
+# Frontend editor configs
+frontend/.vscode/*
+!frontend/.vscode/extensions.json
+frontend/.idea/
+
+############################
+# Backend (Spring Boot + Maven)
+############################
+backend/BookingProject/target/
+backend/BookingProject/.mvn/
+backend/BookingProject/build/
+backend/BookingProject/nbbuild/
+backend/BookingProject/dist/
+backend/BookingProject/nbdist/
+backend/BookingProject/.nb-gradle/
+
+# Maven wrapper
+backend/BookingProject/.mvn/wrapper/maven-wrapper.jar
+backend/BookingProject/.mvn/wrapper/maven-wrapper.properties
+
+# IntelliJ
+backend/BookingProject/.idea/
+backend/BookingProject/*.iws
+backend/BookingProject/*.iml
+backend/BookingProject/*.ipr
+
+# Eclipse / STS
+backend/BookingProject/.classpath
+backend/BookingProject/.project
+backend/BookingProject/.settings/
+backend/BookingProject/.springBeans
+backend/BookingProject/.sts4-cache
+backend/BookingProject/.apt_generated
+backend/BookingProject/.factorypath
+
+# NetBeans
+backend/BookingProject/nbproject/private/
+
+############################
+# Docker
+############################
+docker-compose.override.yml
+docker-compose.dev.yml
+docker-compose.prod.yml
+*.pid
+
+############################
+# Misc
+############################
+*.zip
+*.tar
+*.gz
