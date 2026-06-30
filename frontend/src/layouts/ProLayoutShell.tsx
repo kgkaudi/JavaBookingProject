@@ -10,9 +10,14 @@ import {
   SunOutlined,
 } from "@ant-design/icons";
 import { Avatar, Dropdown, message } from "antd";
+import { useAuth } from "../context/AuthContext"; // ⬅ added
 
 export default function ProLayoutShell({ setDarkMode, darkMode }) {
   const navigate = useNavigate();
+  const { user } = useAuth();
+
+  // First letter of user's name
+  const initial = user?.name?.charAt(0)?.toUpperCase() || "?";
 
   const avatarMenu = {
     items: [
@@ -61,7 +66,6 @@ export default function ProLayoutShell({ setDarkMode, darkMode }) {
       menuItemRender={(item, dom) => <Link to={item.path || "/"}>{dom}</Link>}
       breadcrumbRender={(routers = []) => {
         return routers.map((r) => {
-          // Static mapping
           const nameMap: Record<string, string> = {
             "/": "Home",
             "/rooms": "Rooms",
@@ -69,7 +73,6 @@ export default function ProLayoutShell({ setDarkMode, darkMode }) {
             "/profile": "Profile",
           };
 
-          // Dynamic room detail: /rooms/:id
           if (r.path?.startsWith("/rooms/")) {
             const id = r.path.split("/")[2];
             return {
@@ -100,11 +103,19 @@ export default function ProLayoutShell({ setDarkMode, darkMode }) {
         ),
       ]}
       avatarProps={{
-        src: "https://api.dicebear.com/7.x/identicon/svg?seed=user",
         size: "small",
-        render: (_, avatar) => (
+        render: () => (
           <Dropdown menu={avatarMenu}>
-            <div style={{ cursor: "pointer" }}>{avatar}</div>
+            <Avatar
+              style={{
+                backgroundColor: "#1890ff",
+                fontWeight: 600,
+                fontSize: 16,
+                cursor: "pointer",
+              }}
+            >
+              {initial}
+            </Avatar>
           </Dropdown>
         ),
       }}

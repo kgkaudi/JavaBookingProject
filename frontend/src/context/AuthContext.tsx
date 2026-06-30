@@ -1,11 +1,17 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import api from "../api/axios";
 
+interface UserType {
+  name: string;
+  email: string;
+}
+
 interface AuthContextType {
   token: string | null;
   roles: string[];
   isAdmin: boolean;
   isUser: boolean;
+  user: UserType | null; // 👈 added
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
 }
@@ -15,13 +21,15 @@ const AuthContext = createContext<AuthContextType | null>(null);
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [token, setToken] = useState<string | null>(null);
   const [roles, setRoles] = useState<string[]>([]);
+  const [user, setUser] = useState<UserType | null>(null); // 👈 added
 
   // ---------------------------------------------------------
-  // LOAD TOKEN + ROLES FROM LOCALSTORAGE ON REFRESH
+  // LOAD TOKEN + ROLES + USER FROM LOCALSTORAGE ON REFRESH
   // ---------------------------------------------------------
   useEffect(() => {
     const storedToken = localStorage.getItem("token");
     const storedRoles = localStorage.getItem("roles");
+    const storedUser = localStorage.getItem("user");
 
     if (storedToken) {
       setToken(storedToken);
@@ -30,6 +38,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     if (storedRoles) {
       setRoles(JSON.parse(storedRoles));
+    }
+
+    if (storedUser) {
+      setUser(JSON.parse(storedUser));
     }
   }, []);
 
@@ -41,14 +53,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     const token = res.data.token;
     const roles = res.data.roles || [];
+    const userData = res.data.user || { name: email.split("@")[0], email }; // fallback
 
     // Save to state
     setToken(token);
     setRoles(roles);
+    setUser(userData);
 
     // Save to localStorage
     localStorage.setItem("token", token);
     localStorage.setItem("roles", JSON.stringify(roles));
+    localStorage.setItem("user", JSON.stringify(userData));
 
     // Set axios header
     api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
@@ -60,9 +75,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const logout = () => {
     setToken(null);
     setRoles([]);
+    setUser(null);
 
     localStorage.removeItem("token");
     localStorage.removeItem("roles");
+    localStorage.removeItem("user");
 
     delete api.defaults.headers.common["Authorization"];
   };
@@ -80,6 +97,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         roles,
         isAdmin,
         isUser,
+        user,
         login,
         logout,
       }}
