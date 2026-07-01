@@ -22,7 +22,7 @@ import com.kostas.bookingproject.config.MockMvcConfig;
 import com.kostas.bookingproject.repositories.BookingRepository;
 import com.kostas.bookingproject.repositories.RoomRepository;
 import com.kostas.bookingproject.repositories.UserRepository;
-import com.kostas.bookingproject.security.jwt.JwtUtil;
+import com.kostas.bookingproject.security.JwtUtil;
 import com.kostas.bookingproject.models.User;
 import com.kostas.bookingproject.models.Room;
 import com.kostas.bookingproject.models.Booking;
@@ -54,13 +54,14 @@ class BookingDeepIT {
         rooms.deleteAll();
         users.deleteAll();
 
+        // ✔ Correct role format
         user = users.save(new User(
                 null,
                 "Kostas",
                 "k@k.com",
                 "ENC",
                 "6900000000",
-                List.of("USER")   // ✔ FIXED
+                List.of("ROLE_USER")
         ));
 
         otherUser = users.save(new User(
@@ -69,7 +70,7 @@ class BookingDeepIT {
                 "other@test.com",
                 "ENC",
                 "6900000000",
-                List.of("USER")   // ✔ FIXED
+                List.of("ROLE_USER")
         ));
 
         admin = users.save(new User(
@@ -78,12 +79,13 @@ class BookingDeepIT {
                 "admin@test.com",
                 "ENC",
                 "6900000000",
-                List.of("ADMIN")  // ✔ FIXED
+                List.of("ROLE_ADMIN")
         ));
 
-        userToken      = "Bearer " + jwt.generateToken(user.getId(), List.of("USER"));
-        otherUserToken = "Bearer " + jwt.generateToken(otherUser.getId(), List.of("USER"));
-        adminToken     = "Bearer " + jwt.generateToken(admin.getId(), List.of("ADMIN"));
+        // ✔ Correct JWT role format
+        userToken      = "Bearer " + jwt.generateToken(user.getId(), List.of("ROLE_USER"));
+        otherUserToken = "Bearer " + jwt.generateToken(otherUser.getId(), List.of("ROLE_USER"));
+        adminToken     = "Bearer " + jwt.generateToken(admin.getId(), List.of("ROLE_ADMIN"));
 
         room = rooms.save(new Room(
                 null,
@@ -334,13 +336,13 @@ class BookingDeepIT {
         mvc.perform(post("/api/bookings")
                         .contentType("application/json")
                         .content(mapper.writeValueAsString(req)))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isUnauthorized()); // ✔ 401
     }
 
     @Test
     void cannot_list_bookings_without_token() throws Exception {
         mvc.perform(get("/api/bookings"))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isUnauthorized()); // ✔ 401
     }
 
     @Test
@@ -358,7 +360,7 @@ class BookingDeepIT {
                         .header("Authorization", "Bearer invalid")
                         .contentType("application/json")
                         .content(mapper.writeValueAsString(req)))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isForbidden()); // ✔ 403
     }
 
     // ------------------------------------------------------------

@@ -20,7 +20,7 @@ import java.util.List;
 import com.kostas.bookingproject.config.MockMvcConfig;
 import com.kostas.bookingproject.repositories.RoomRepository;
 import com.kostas.bookingproject.repositories.UserRepository;
-import com.kostas.bookingproject.security.jwt.JwtUtil;
+import com.kostas.bookingproject.security.JwtUtil;
 import com.kostas.bookingproject.models.Room;
 import com.kostas.bookingproject.models.User;
 
@@ -48,7 +48,7 @@ class RoomControllerIT {
                 "admin@test.com",
                 "ENC",
                 "6900000000",
-                List.of("ADMIN")   // ✔ FIXED
+                List.of("ROLE_ADMIN")
         ));
 
         User user = users.save(new User(
@@ -57,11 +57,12 @@ class RoomControllerIT {
                 "user@test.com",
                 "ENC",
                 "6900000000",
-                List.of("USER")    // ✔ FIXED
+                List.of("ROLE_USER")
         ));
 
-        adminToken = "Bearer " + jwt.generateToken(admin.getId(), List.of("ADMIN")); // ✔ FIXED
-        userToken  = "Bearer " + jwt.generateToken(user.getId(), List.of("USER"));   // ✔ FIXED
+        // ✔ Correct JWT role format
+        adminToken = "Bearer " + jwt.generateToken(admin.getId(), List.of("ROLE_ADMIN"));
+        userToken  = "Bearer " + jwt.generateToken(user.getId(), List.of("ROLE_USER"));
     }
 
     // ------------------------------------------------------------
@@ -121,7 +122,7 @@ class RoomControllerIT {
         mvc.perform(post("/api/rooms")
                         .contentType("application/json")
                         .content(mapper.writeValueAsString(r)))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isUnauthorized());
     }
 
     @Test

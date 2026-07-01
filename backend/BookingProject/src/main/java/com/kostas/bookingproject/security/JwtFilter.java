@@ -1,8 +1,7 @@
 package com.kostas.bookingproject.security;
 
-import com.kostas.bookingproject.models.User;
-import com.kostas.bookingproject.repositories.UserRepository;
-import com.kostas.bookingproject.security.jwt.JwtUtil;
+import com.kostas.bookingproject.security.JwtUtil;
+import io.jsonwebtoken.Claims;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -10,7 +9,6 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -21,83 +19,39 @@ import java.util.List;
 public class JwtFilter extends OncePerRequestFilter {
 
     private final JwtUtil jwtUtil;
-    private final UserRepository userRepository;
-    private final TokenBlacklist tokenBlacklist;
 
-    public JwtFilter(JwtUtil jwtUtil,
-            UserRepository userRepository,
-            TokenBlacklist tokenBlacklist) {
+    public JwtFilter(JwtUtil jwtUtil) {
         this.jwtUtil = jwtUtil;
-        this.userRepository = userRepository;
-        this.tokenBlacklist = tokenBlacklist;
     }
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
-            HttpServletResponse response,
-            FilterChain filterChain)
+                                    HttpServletResponse response,
+                                    FilterChain filterChain)
             throws ServletException, IOException {
 
-        String path = request.getServletPath();
+        String header = request.getHeader("Authorization");
 
-        // Skip JWT validation for public endpoints
-        if (path.startsWith("/api/auth/")
-                || path.startsWith("/api/rooms")) {
-            filterChain.doFilter(request, response);
-            return;
-        }
+        if (header != null && header.startsWith("Bearer ")) {
+            String token = header.substring(7);
 
-        String authHeader = request.getHeader("Authorization");
+            try {
+                Claims claims = jwtUtil.validate(token);
+                String userId = claims.getSubject();
+                List<String> roles = claims.get("roles", List.class);
 
-        // No token → continue
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            filterChain.doFilter(request, response);
-            return;
-        }
+                List<SimpleGrantedAuthority> authorities = roles.stream()
+                        .map(SimpleGrantedAuthority::new)
+                        .toList();
 
-        String token = authHeader.substring(7);
+                UsernamePasswordAuthenticationToken auth =
+                        new UsernamePasswordAuthenticationToken(userId, null, authorities);
 
-        // Reject blacklisted tokens
-        if (tokenBlacklist.isBlacklisted(token)) {
-            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            return;
-        }
+                SecurityContextHolder.getContext().setAuthentication(auth);
 
-        try {
-            // Validate token and extract claims
-            var claims = jwtUtil.validate(token);
-            String userId = claims.getSubject();
-
-            if (userId == null) {
-                filterChain.doFilter(request, response);
-                return;
+            } catch (Exception e) {
+                SecurityContextHolder.clearContext();
             }
-
-            // Load user from DB
-            User user = userRepository.findById(userId).orElse(null);
-            if (user == null) {
-                filterChain.doFilter(request, response);
-                return;
-            }
-
-            // Map roles to Spring Security authorities
-            var authorities = user.getRoles().stream()
-                    .map(role -> new SimpleGrantedAuthority("ROLE_" + role))
-                    .toList();
-
-            // Create authentication object
-            UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
-                    user,
-                    null,
-                    authorities);
-
-            auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-
-            // Set authentication in context
-            SecurityContextHolder.getContext().setAuthentication(auth);
-
-        } catch (Exception e) {
-            // Invalid token → ignore and continue
         }
 
         filterChain.doFilter(request, response);

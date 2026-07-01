@@ -1,4 +1,4 @@
-package com.kostas.bookingproject.security.jwt;
+package com.kostas.bookingproject.security;
 
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;

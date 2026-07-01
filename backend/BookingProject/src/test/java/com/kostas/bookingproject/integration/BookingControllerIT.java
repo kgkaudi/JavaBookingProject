@@ -21,7 +21,7 @@ import com.kostas.bookingproject.config.MockMvcConfig;
 import com.kostas.bookingproject.repositories.BookingRepository;
 import com.kostas.bookingproject.repositories.RoomRepository;
 import com.kostas.bookingproject.repositories.UserRepository;
-import com.kostas.bookingproject.security.jwt.JwtUtil;
+import com.kostas.bookingproject.security.JwtUtil;
 import com.kostas.bookingproject.models.User;
 import com.kostas.bookingproject.models.Room;
 import com.kostas.bookingproject.models.Booking;
@@ -51,12 +51,12 @@ class BookingControllerIT {
                 null,
                 "Kostas",
                 "k@k.com",
-                "ENC",
+                "ENC", // If your login uses BCrypt, replace this with a real hash
                 "6900000000",
-                List.of("USER")   // ✔ FIXED
+                List.of("ROLE_USER")
         ));
 
-        token = "Bearer " + jwt.generateToken(user.getId(), List.of("USER")); // ✔ FIXED
+        token = "Bearer " + jwt.generateToken(user.getId(), List.of("ROLE_USER"));
 
         room = rooms.save(new Room(
                 null,
@@ -252,13 +252,13 @@ class BookingControllerIT {
         mvc.perform(post("/api/bookings")
                         .contentType("application/json")
                         .content(mapper.writeValueAsString(req)))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isUnauthorized()); // ✔ 401, not 403
     }
 
     @Test
     void cannot_list_bookings_without_token() throws Exception {
         mvc.perform(get("/api/bookings"))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isUnauthorized()); // ✔ 401
     }
 
     @Test
@@ -276,7 +276,7 @@ class BookingControllerIT {
                         .header("Authorization", "Bearer invalid")
                         .contentType("application/json")
                         .content(mapper.writeValueAsString(req)))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isForbidden()); // ✔ 403
     }
 
     // ------------------------------------------------------------

@@ -35,8 +35,8 @@ class UserControllerIT {
 
     @BeforeEach
     void setup() {
-        user = new User("u1", "Kostas", "k@k.com", "ENC", "6900000000", List.of("USER"));
-        admin = new User("a1", "Admin", "admin@test.com", "ENC", "6900000000", List.of("ADMIN"));
+        user = new User("u1", "Kostas", "k@k.com", "ENC", "6900000000", List.of("ROLE_USER"));
+        admin = new User("a1", "Admin", "admin@test.com", "ENC", "6900000000", List.of("ROLE_ADMIN"));
     }
 
     // ---------------------------------------------------------
@@ -84,7 +84,7 @@ class UserControllerIT {
     @Test
     @WithMockUser(roles = "ADMIN")
     void updateUser_success() throws Exception {
-        User updated = new User("u1", "Updated", "updated@test.com", "ENC", "6900000000", List.of("USER"));
+        User updated = new User("u1", "Updated", "updated@test.com", "ENC", "6900000000", List.of("ROLE_USER"));
 
         when(userService.updateUser(eq("u1"), any(), any())).thenReturn(updated);
 
@@ -137,13 +137,13 @@ class UserControllerIT {
     @Test
     @WithMockUser(roles = "ADMIN")
     void promoteUser_success() throws Exception {
-        User promoted = new User("u1", "Kostas", "k@k.com", "ENC", "6900000000", List.of("ADMIN"));
+        User promoted = new User("u1", "Kostas", "k@k.com", "ENC", "6900000000", List.of("ROLE_ADMIN"));
 
         when(userService.promoteToAdmin("u1")).thenReturn(promoted);
 
         mvc.perform(put("/api/users/u1/promote"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.roles[0]").value("ADMIN")); // ✔ FIXED
+                .andExpect(jsonPath("$.roles[0]").value("ROLE_ADMIN"));
     }
 
     @Test
@@ -163,13 +163,13 @@ class UserControllerIT {
     @Test
     @WithMockUser(roles = "ADMIN")
     void demoteUser_success() throws Exception {
-        User demoted = new User("u1", "Kostas", "k@k.com", "ENC", "6900000000", List.of("USER"));
+        User demoted = new User("u1", "Kostas", "k@k.com", "ENC", "6900000000", List.of("ROLE_USER"));
 
         when(userService.demoteToUser("u1")).thenReturn(demoted);
 
         mvc.perform(put("/api/users/u1/demote"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.roles[0]").value("USER")); // ✔ FIXED
+                .andExpect(jsonPath("$.roles[0]").value("ROLE_USER"));
     }
 
     @Test

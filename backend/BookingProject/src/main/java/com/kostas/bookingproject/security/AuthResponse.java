@@ -1,4 +1,4 @@
-package com.kostas.bookingproject.auth;
+package com.kostas.bookingproject.security;
 
 import java.util.List;
 

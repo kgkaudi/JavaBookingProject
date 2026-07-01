@@ -16,10 +16,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.kostas.bookingproject.config.MockMvcConfig;
 import com.kostas.bookingproject.repositories.UserRepository;
-import com.kostas.bookingproject.security.jwt.JwtUtil;
+import com.kostas.bookingproject.security.JwtUtil;
 import com.kostas.bookingproject.models.User;
-import com.kostas.bookingproject.auth.SignupRequest;
-import com.kostas.bookingproject.auth.AuthRequest;
+import com.kostas.bookingproject.security.SignupRequest;
+import com.kostas.bookingproject.security.AuthRequest;
 
 import java.util.List;
 
@@ -59,7 +59,7 @@ class AuthControllerIT {
 
     @Test
     void login_success() throws Exception {
-        users.save(new User(null, "Kostas", "k@k.com", "ENC", "6900000000", List.of("USER")));
+        users.save(new User(null, "Kostas", "k@k.com", "ENC", "6900000000", List.of("ROLE_USER")));
 
         AuthRequest req = new AuthRequest("k@k.com", "ENC");
 
@@ -73,7 +73,7 @@ class AuthControllerIT {
 
     @Test
     void full_jwt_flow() throws Exception {
-        User u = users.save(new User(null, "Kostas", "k@k.com", "ENC", "6900000000", List.of("USER")));
+        User u = users.save(new User(null, "Kostas", "k@k.com", "ENC", "6900000000", List.of("ROLE_USER")));
 
         AuthRequest req = new AuthRequest("k@k.com", "ENC");
 
@@ -90,7 +90,7 @@ class AuthControllerIT {
 
         var claims = jwt.validate(token);
 
-        assert ((List<?>) claims.get("roles")).contains("USER");
+        assert ((List<?>) claims.get("roles")).contains("ROLE_USER");
         assert claims.getSubject().equals(u.getId());
     }
 
@@ -170,7 +170,7 @@ class AuthControllerIT {
 
     @Test
     void signup_duplicate_email() throws Exception {
-        users.save(new User(null, "Kostas", "k@k.com", "ENC", "6900000000", List.of("USER")));
+        users.save(new User(null, "Kostas", "k@k.com", "ENC", "6900000000", List.of("ROLE_USER")));
 
         SignupRequest req = new SignupRequest(
                 "Kostas",
@@ -187,7 +187,7 @@ class AuthControllerIT {
 
     @Test
     void login_wrong_password() throws Exception {
-        users.save(new User(null, "Kostas", "k@k.com", "ENC", "6900000000", List.of("USER")));
+        users.save(new User(null, "Kostas", "k@k.com", "ENC", "6900000000", List.of("ROLE_USER")));
 
         AuthRequest req = new AuthRequest("k@k.com", "WRONG");
 
@@ -214,20 +214,20 @@ class AuthControllerIT {
     @Test
     void protected_endpoint_requires_token() throws Exception {
         mvc.perform(get("/api/users/me"))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isUnauthorized()); // 401, not 403
     }
 
     @Test
     void protected_endpoint_invalid_token() throws Exception {
         mvc.perform(get("/api/users/me")
                         .header("Authorization", "Bearer invalid"))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isForbidden()); // invalid token → 403
     }
 
     @Test
     void protected_endpoint_valid_token() throws Exception {
-        User u = users.save(new User(null, "Kostas", "k@k.com", "ENC", "6900000000", List.of("USER")));
-        String token = "Bearer " + jwt.generateToken(u.getId(), List.of("USER"));
+        User u = users.save(new User(null, "Kostas", "k@k.com", "ENC", "6900000000", List.of("ROLE_USER")));
+        String token = "Bearer " + jwt.generateToken(u.getId(), List.of("ROLE_USER"));
 
         mvc.perform(get("/api/users/me")
                         .header("Authorization", token))
@@ -241,7 +241,7 @@ class AuthControllerIT {
 
     @Test
     void login_fails_if_user_deleted_after_signup() throws Exception {
-        users.save(new User(null, "Kostas", "k@k.com", "ENC", "6900000000", List.of("USER")));
+        users.save(new User(null, "Kostas", "k@k.com", "ENC", "6900000000", List.of("ROLE_USER")));
 
         users.deleteAll(); // simulate race condition
 

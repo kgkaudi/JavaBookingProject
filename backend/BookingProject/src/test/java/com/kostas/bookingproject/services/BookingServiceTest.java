@@ -35,7 +35,7 @@ class BookingServiceTest {
 
         service = new BookingService(bookings, rooms, users);
 
-        user = new User("u1", "Kostas", "k@k.com", "ENC", "6900000000", List.of("USER")); // ✔ FIXED
+        user = new User("u1", "Kostas", "k@k.com", "ENC", "6900000000", List.of("ROLE_USER"));
         room = new Room("r1", 101, "single", 50, true);
     }
 

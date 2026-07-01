@@ -34,14 +34,21 @@ public class UserController {
     }
 
     // ---------------------------------------------------------
+    // GET AUTHENTICATED USER (SELF)
+    // ---------------------------------------------------------
+    @GetMapping("/me")
+    public User getMe(@AuthenticationPrincipal User user) {
+        return user;
+    }
+
+    // ---------------------------------------------------------
     // UPDATE USER (ADMIN or SELF)
     // ---------------------------------------------------------
     @PutMapping("/{userId}")
     public User updateUser(
             @PathVariable String userId,
             @RequestBody User updatedUser,
-            @AuthenticationPrincipal User currentUser
-    ) {
+            @AuthenticationPrincipal User currentUser) {
         return userService.updateUser(userId, updatedUser, currentUser);
     }
 

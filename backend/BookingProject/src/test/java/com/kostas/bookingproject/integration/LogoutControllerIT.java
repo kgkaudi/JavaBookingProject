@@ -4,7 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.kostas.bookingproject.config.MockMvcConfig;
 import com.kostas.bookingproject.controllers.AuthController;
 import com.kostas.bookingproject.security.TokenBlacklist;
-import com.kostas.bookingproject.auth.AuthService;
+import com.kostas.bookingproject.security.AuthService;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -34,7 +34,7 @@ class LogoutControllerIT {
     // ---------------------------------------------------------
 
     @Test
-    @WithMockUser
+    @WithMockUser(roles = "USER")
     void logout_success() throws Exception {
         String token = "Bearer faketoken123";
 
@@ -51,7 +51,7 @@ class LogoutControllerIT {
     // ---------------------------------------------------------
 
     @Test
-    @WithMockUser
+    @WithMockUser(roles = "USER")
     void logout_noToken() throws Exception {
         mvc.perform(post("/api/auth/logout"))
                 .andExpect(status().isBadRequest())
@@ -61,11 +61,11 @@ class LogoutControllerIT {
     }
 
     // ---------------------------------------------------------
-    // LOGOUT WITH BLACKLISTED TOKEN (FILTER SHOULD BLOCK)
+    // LOGOUT WITH BLACKLISTED TOKEN
     // ---------------------------------------------------------
 
     @Test
-    @WithMockUser
+    @WithMockUser(roles = "USER")
     void logout_blacklistedToken() throws Exception {
         when(tokenBlacklist.isBlacklisted("faketoken123")).thenReturn(true);
 

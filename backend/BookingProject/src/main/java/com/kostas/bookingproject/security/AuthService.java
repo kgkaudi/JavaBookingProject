@@ -1,8 +1,8 @@
-package com.kostas.bookingproject.auth;
+package com.kostas.bookingproject.security;
 
 import com.kostas.bookingproject.models.User;
 import com.kostas.bookingproject.repositories.UserRepository;
-import com.kostas.bookingproject.security.jwt.JwtUtil;
+import com.kostas.bookingproject.security.JwtUtil;
 
 import java.util.List;
 
@@ -39,7 +39,7 @@ public class AuthService {
         user.setPhone(request.getPhone());
         user.setPassword(passwordEncoder.encode(request.getPassword()));
 
-        user.setRoles(List.of("USER"));
+        user.setRoles(List.of("ROLE_USER"));
 
         return userRepository.save(user);
     }

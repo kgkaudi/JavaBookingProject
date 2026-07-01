@@ -9,77 +9,59 @@ import java.util.List;
 @Service
 public class UserService {
 
-    private final UserRepository userRepository;
+    private final UserRepository users;
 
-    public UserService(UserRepository userRepository) {
-        this.userRepository = userRepository;
+    public UserService(UserRepository users) {
+        this.users = users;
     }
 
-    // ---------------------------------------------------------
-    // GET ALL USERS (ADMIN)
-    // ---------------------------------------------------------
     public List<User> getAllUsers() {
-        return userRepository.findAll();
+        return users.findAll();
     }
 
-    // ---------------------------------------------------------
-    // GET USER BY ID
-    // ---------------------------------------------------------
-    public User getUserById(String userId) {
-        return userRepository.findById(userId)
+    public User getUserById(String id) {
+        return users.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
     }
 
-    // ---------------------------------------------------------
-    // UPDATE USER (ADMIN or SELF)
-    // ---------------------------------------------------------
-    public User updateUser(String userId, User updatedUser, User currentUser) {
-
-        User existing = userRepository.findById(userId)
+    public User updateUser(String id, User updated, User currentUser) {
+        User existing = users.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
 
-        // Only admin or the user themselves can update
-        if (!currentUser.getId().equals(userId) &&
-                !currentUser.getRoles().contains("ADMIN")) {   // ✔ FIXED
+        boolean isAdmin = currentUser.getRoles().contains("ROLE_ADMIN");
+        boolean isSelf = currentUser.getId().equals(id);
+
+        if (!isSelf && !isAdmin) {
             throw new IllegalStateException("Not authorized to update this user");
         }
 
-        existing.setName(updatedUser.getName());
-        existing.setEmail(updatedUser.getEmail());
-        existing.setPhone(updatedUser.getPhone());
+        existing.setName(updated.getName());
+        existing.setEmail(updated.getEmail());
+        existing.setPhone(updated.getPhone());
 
-        return userRepository.save(existing);
+        return users.save(existing);
     }
 
-    // ---------------------------------------------------------
-    // DELETE USER (ADMIN)
-    // ---------------------------------------------------------
-    public void deleteUser(String userId) {
-        if (!userRepository.existsById(userId)) {
+    public void deleteUser(String id) {
+        if (!users.existsById(id)) {
             throw new IllegalArgumentException("User not found");
         }
-        userRepository.deleteById(userId);
+        users.deleteById(id);
     }
 
-    // ---------------------------------------------------------
-    // PROMOTE USER TO ADMIN
-    // ---------------------------------------------------------
-    public User promoteToAdmin(String userId) {
-        User user = userRepository.findById(userId)
+    public User promoteToAdmin(String id) {
+        User user = users.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
 
-        user.setRoles(List.of("ADMIN"));   // ✔ FIXED
-        return userRepository.save(user);
+        user.setRoles(List.of("ROLE_ADMIN"));
+        return users.save(user);
     }
 
-    // ---------------------------------------------------------
-    // DEMOTE USER TO USER
-    // ---------------------------------------------------------
-    public User demoteToUser(String userId) {
-        User user = userRepository.findById(userId)
+    public User demoteToUser(String id) {
+        User user = users.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
 
-        user.setRoles(List.of("USER"));    // ✔ FIXED
-        return userRepository.save(user);
+        user.setRoles(List.of("ROLE_USER"));
+        return users.save(user);
     }
 }

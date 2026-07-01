@@ -19,8 +19,8 @@ public class UserProfileController {
     // GET CURRENT USER
     // ---------------------------------------------------------
     @GetMapping
-    public User getCurrentUser(@AuthenticationPrincipal User currentUser) {
-        return userRepository.findById(currentUser.getId())
+    public User getCurrentUser(@AuthenticationPrincipal String userId) {
+        return userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
     }
 
@@ -29,10 +29,10 @@ public class UserProfileController {
     // ---------------------------------------------------------
     @PutMapping
     public User updateCurrentUser(
-            @AuthenticationPrincipal User currentUser,
+            @AuthenticationPrincipal String userId,
             @RequestBody User updated
     ) {
-        User existing = userRepository.findById(currentUser.getId())
+        User existing = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
 
         if (updated.getName() == null || updated.getEmail() == null) {
@@ -50,10 +50,10 @@ public class UserProfileController {
     // DELETE CURRENT USER
     // ---------------------------------------------------------
     @DeleteMapping
-    public void deleteCurrentUser(@AuthenticationPrincipal User currentUser) {
-        if (!userRepository.existsById(currentUser.getId())) {
+    public void deleteCurrentUser(@AuthenticationPrincipal String userId) {
+        if (!userRepository.existsById(userId)) {
             throw new IllegalArgumentException("User not found");
         }
-        userRepository.deleteById(currentUser.getId());
+        userRepository.deleteById(userId);
     }
 }

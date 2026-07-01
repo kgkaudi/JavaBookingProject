@@ -1,9 +1,9 @@
 package com.kostas.bookingproject.controllers;
 
-import com.kostas.bookingproject.auth.AuthRequest;
-import com.kostas.bookingproject.auth.AuthResponse;
-import com.kostas.bookingproject.auth.SignupRequest;
-import com.kostas.bookingproject.auth.AuthService;
+import com.kostas.bookingproject.security.AuthResponse;
+import com.kostas.bookingproject.security.SignupRequest;
+import com.kostas.bookingproject.security.AuthService;
+import com.kostas.bookingproject.security.AuthRequest;
 import com.kostas.bookingproject.security.TokenBlacklist;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.ResponseEntity;

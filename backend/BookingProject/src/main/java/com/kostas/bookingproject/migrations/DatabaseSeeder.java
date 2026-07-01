@@ -15,6 +15,7 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
+
 @Component
 public class DatabaseSeeder implements ApplicationRunner {
 
@@ -48,7 +49,7 @@ public class DatabaseSeeder implements ApplicationRunner {
             admin.setName("Admin");
             admin.setEmail("admin@booking.com");
             admin.setPassword(passwordEncoder.encode("Admin123!"));
-            admin.setRoles(List.of("ADMIN"));   // ✔ FIXED
+            admin.setRoles(List.of("ROLE_ADMIN"));
             userRepository.save(admin);
             System.out.println("✔ Admin user created");
         }
@@ -61,7 +62,7 @@ public class DatabaseSeeder implements ApplicationRunner {
             u1.setName("Test User 1");
             u1.setEmail("user1@test.com");
             u1.setPassword(passwordEncoder.encode("123456"));
-            u1.setRoles(List.of("USER"));       // ✔ FIXED
+            u1.setRoles(List.of("ROLE_USER"));
             userRepository.save(u1);
             System.out.println("✔ Test User 1 created");
         }
@@ -71,7 +72,7 @@ public class DatabaseSeeder implements ApplicationRunner {
             u2.setName("Test User 2");
             u2.setEmail("user2@test.com");
             u2.setPassword(passwordEncoder.encode("123456"));
-            u2.setRoles(List.of("USER"));       // ✔ FIXED
+            u2.setRoles(List.of("ROLE_USER"));
             userRepository.save(u2);
             System.out.println("✔ Test User 2 created");
         }

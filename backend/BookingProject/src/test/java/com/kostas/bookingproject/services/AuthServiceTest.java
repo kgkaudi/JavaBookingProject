@@ -1,8 +1,12 @@
-package com.kostas.bookingproject.auth;
+package com.kostas.bookingproject.services;
 
+import com.kostas.bookingproject.security.SignupRequest;
 import com.kostas.bookingproject.models.User;
 import com.kostas.bookingproject.repositories.UserRepository;
-import com.kostas.bookingproject.security.jwt.JwtUtil;
+import com.kostas.bookingproject.security.AuthRequest;
+import com.kostas.bookingproject.security.AuthResponse;
+import com.kostas.bookingproject.security.AuthService;
+import com.kostas.bookingproject.security.JwtUtil;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -11,6 +15,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 class AuthServiceTest {
@@ -39,7 +44,7 @@ class AuthServiceTest {
         User result = authService.signup(req);
 
         assertEquals("ENC", result.getPassword());
-        assertTrue(result.getRoles().contains("USER")); // ✔ FIXED
+        assertTrue(result.getRoles().contains("ROLE_USER"));
     }
 
     @Test
@@ -60,16 +65,16 @@ class AuthServiceTest {
         User user = new User();
         user.setPassword("ENC");
         user.setId("u1");
-        user.setRoles(List.of("USER")); // ✔ FIXED
+        user.setRoles(List.of("USER"));
 
         when(userRepository.findByEmail("k@k.com")).thenReturn(Optional.of(user));
         when(passwordEncoder.matches("123", "ENC")).thenReturn(true);
-        when(jwtUtil.generateToken("u1", List.of("USER"))).thenReturn("TOKEN"); // ✔ FIXED
+        when(jwtUtil.generateToken("u1", List.of("USER"))).thenReturn("TOKEN");
 
         AuthResponse res = authService.login(req);
 
         assertEquals("TOKEN", res.getToken());
-        assertEquals(List.of("USER"), res.getRoles()); // ✔ FIXED
+        assertEquals(List.of("USER"), res.getRoles());
     }
 
     @Test
@@ -78,7 +83,7 @@ class AuthServiceTest {
 
         User user = new User();
         user.setPassword("ENC");
-        user.setRoles(List.of("USER")); // ✔ FIXED
+        user.setRoles(List.of("USER"));
 
         when(userRepository.findByEmail("k@k.com")).thenReturn(Optional.of(user));
         when(passwordEncoder.matches("wrong", "ENC")).thenReturn(false);

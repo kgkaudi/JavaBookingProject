@@ -11,7 +11,7 @@ interface AuthContextType {
   roles: string[];
   isAdmin: boolean;
   isUser: boolean;
-  user: UserType | null; // 👈 added
+  user: UserType | null;
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
 }
@@ -21,15 +21,14 @@ const AuthContext = createContext<AuthContextType | null>(null);
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [token, setToken] = useState<string | null>(null);
   const [roles, setRoles] = useState<string[]>([]);
-  const [user, setUser] = useState<UserType | null>(null); // 👈 added
+  const [user, setUser] = useState<UserType | null>(null);
 
   // ---------------------------------------------------------
-  // LOAD TOKEN + ROLES + USER FROM LOCALSTORAGE ON REFRESH
+  // LOAD TOKEN + VALIDATE IT ON REFRESH
   // ---------------------------------------------------------
   useEffect(() => {
     const storedToken = localStorage.getItem("token");
     const storedRoles = localStorage.getItem("roles");
-    const storedUser = localStorage.getItem("user");
 
     if (storedToken) {
       setToken(storedToken);
@@ -40,8 +39,18 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setRoles(JSON.parse(storedRoles));
     }
 
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
+    // 🔥 Validate token by fetching the real user
+    if (storedToken) {
+      api
+        .get("/api/users/me")
+        .then((res) => {
+          setUser(res.data);
+          localStorage.setItem("user", JSON.stringify(res.data));
+        })
+        .catch(() => {
+          // Token invalid → logout
+          logout();
+        });
     }
   }, []);
 
@@ -53,20 +62,21 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     const token = res.data.token;
     const roles = res.data.roles || [];
-    const userData = res.data.user || { name: email.split("@")[0], email }; // fallback
 
-    // Save to state
+    // Save token
     setToken(token);
-    setRoles(roles);
-    setUser(userData);
-
-    // Save to localStorage
     localStorage.setItem("token", token);
-    localStorage.setItem("roles", JSON.stringify(roles));
-    localStorage.setItem("user", JSON.stringify(userData));
-
-    // Set axios header
     api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+
+    // Save roles
+    setRoles(roles);
+    localStorage.setItem("roles", JSON.stringify(roles));
+
+    // Fetch user info
+    const me = await api.get("/api/users/me");
+    // const me = await api.get("/users/me");
+    setUser(me.data);
+    localStorage.setItem("user", JSON.stringify(me.data));
   };
 
   // ---------------------------------------------------------

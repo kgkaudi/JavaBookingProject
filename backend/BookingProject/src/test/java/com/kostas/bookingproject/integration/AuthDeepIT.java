@@ -16,9 +16,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.kostas.bookingproject.config.MockMvcConfig;
 import com.kostas.bookingproject.repositories.UserRepository;
-import com.kostas.bookingproject.security.jwt.JwtUtil;
-import com.kostas.bookingproject.auth.SignupRequest;
-import com.kostas.bookingproject.auth.AuthRequest;
+import com.kostas.bookingproject.security.JwtUtil;
+import com.kostas.bookingproject.security.SignupRequest;
+import com.kostas.bookingproject.security.AuthRequest;
 import com.kostas.bookingproject.models.User;
 
 import java.util.List;
@@ -39,6 +39,8 @@ class AuthDeepIT {
 
     @Test
     void signup_then_login_then_access_protected_endpoint() throws Exception {
+
+        // 1) SIGNUP
         SignupRequest req = new SignupRequest("Kostas", "k@k.com", "123456", "6900000000");
 
         mvc.perform(post("/api/auth/signup")
@@ -47,6 +49,7 @@ class AuthDeepIT {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").exists());
 
+        // 2) LOGIN
         AuthRequest login = new AuthRequest("k@k.com", "123456");
 
         String tokenJson = mvc.perform(post("/api/auth/login")
@@ -61,13 +64,19 @@ class AuthDeepIT {
         String token = mapper.readTree(tokenJson).get("token").asText();
         var claims = jwt.validate(token);
 
-        // ✔ Updated for roles list
-        assert ((List<?>) claims.get("roles")).contains("USER");
+        // ✔ Correct role assertion
+        assert ((List<?>) claims.get("roles")).contains("ROLE_USER");
+
+        // 3) ACCESS PROTECTED ENDPOINT
+        mvc.perform(get("/api/users/me")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.email").value("k@k.com"));
     }
 
     @Test
     void login_wrong_password() throws Exception {
-        users.save(new User(null, "Kostas", "k@k.com", "ENC", "6900000000", List.of("USER")));
+        users.save(new User(null, "Kostas", "k@k.com", "ENC", "6900000000", List.of("ROLE_USER")));
 
         AuthRequest req = new AuthRequest("k@k.com", "wrong");
 
@@ -79,7 +88,7 @@ class AuthDeepIT {
 
     @Test
     void signup_duplicate_email() throws Exception {
-        users.save(new User(null, "Kostas", "k@k.com", "ENC", "6900000000", List.of("USER")));
+        users.save(new User(null, "Kostas", "k@k.com", "ENC", "6900000000", List.of("ROLE_USER")));
 
         SignupRequest req = new SignupRequest("Kostas", "k@k.com", "123", "6900000000");
 

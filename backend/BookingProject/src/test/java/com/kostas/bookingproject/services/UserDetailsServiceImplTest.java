@@ -1,7 +1,9 @@
-package com.kostas.bookingproject.security;
+package com.kostas.bookingproject.services;
 
 import com.kostas.bookingproject.models.User;
 import com.kostas.bookingproject.repositories.UserRepository;
+import com.kostas.bookingproject.security.UserDetailsServiceImpl;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -28,7 +30,7 @@ class UserDetailsServiceImplTest {
         User user = new User();
         user.setEmail("k@k.com");
         user.setPassword("ENC");
-        user.setRoles(List.of("USER")); // ✔ FIXED
+        user.setRoles(List.of("ROLE_USER"));
 
         when(userRepository.findByEmail("k@k.com")).thenReturn(Optional.of(user));
 

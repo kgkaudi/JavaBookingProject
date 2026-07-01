@@ -24,8 +24,9 @@ class UserServiceTest {
         userRepository = mock(UserRepository.class);
         userService = new UserService(userRepository);
 
-        user = new User("u1", "Kostas", "k@k.com", "ENC", "6900000000", List.of("USER"));   // ✔ FIXED
-        admin = new User("a1", "Admin", "admin@test.com", "ENC", "6900000000", List.of("ADMIN")); // ✔ FIXED
+        // MUST MATCH UserService.java EXACTLY
+        user = new User("u1", "Kostas", "k@k.com", "ENC", "6900000000", List.of("ROLE_USER"));
+        admin = new User("a1", "Admin", "admin@test.com", "ENC", "6900000000", List.of("ROLE_ADMIN"));
     }
 
     // ---------------------------------------------------------
@@ -103,7 +104,7 @@ class UserServiceTest {
         User updated = new User();
         updated.setName("Hack");
 
-        User otherUser = new User("u2", "Other", "o@test.com", "ENC", "6900000000", List.of("USER")); // ✔ FIXED
+        User otherUser = new User("u2", "Other", "o@test.com", "ENC", "6900000000", List.of("ROLE_USER"));
 
         when(userRepository.findById("u1")).thenReturn(Optional.of(user));
 
@@ -151,7 +152,7 @@ class UserServiceTest {
 
         User result = userService.promoteToAdmin("u1");
 
-        assertTrue(result.getRoles().contains("ADMIN")); // ✔ FIXED
+        assertTrue(result.getRoles().contains("ROLE_ADMIN"));
     }
 
     @Test
@@ -164,14 +165,14 @@ class UserServiceTest {
 
     @Test
     void demoteToUser_success() {
-        admin.setRoles(List.of("ADMIN")); // ✔ FIXED
+        admin.setRoles(List.of("ROLE_ADMIN"));
 
         when(userRepository.findById("a1")).thenReturn(Optional.of(admin));
         when(userRepository.save(admin)).thenReturn(admin);
 
         User result = userService.demoteToUser("a1");
 
-        assertTrue(result.getRoles().contains("USER")); // ✔ FIXED
+        assertTrue(result.getRoles().contains("ROLE_USER"));
     }
 
     @Test
