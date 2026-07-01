@@ -8,18 +8,20 @@ export default function Login() {
   const navigate = useNavigate();
   const { login } = useAuth();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
   const handleLogin = async (values: any) => {
-    setErrorMessage(null); // clear previous error
+    setErrorMessage(null);
+    setLoading(true);
 
     try {
       await login(values.email, values.password);
+
       message.success("Login successful");
       navigate("/");
     } catch (err: any) {
       const res = err?.response?.data;
 
-      // Handle both string and object responses
       const backendMessage =
         typeof res === "string"
           ? res
@@ -31,7 +33,9 @@ export default function Login() {
       const finalMessage = backendMessage || "Invalid email or password";
 
       message.error(finalMessage);
-      setErrorMessage(finalMessage); // show message in UI
+      setErrorMessage(finalMessage);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -55,8 +59,12 @@ export default function Login() {
           onFinish={handleLogin}
           submitter={{
             searchConfig: {
-              submitText: "Login",
+              submitText: loading ? "Logging in..." : "Login",
               resetText: "Reset",
+            },
+            submitButtonProps: {
+              loading,
+              disabled: loading,
             },
           }}
         >
@@ -78,7 +86,6 @@ export default function Login() {
           />
         </ProForm>
 
-        {/* 👇 Display backend error visibly */}
         {errorMessage && (
           <p
             style={{

@@ -2,56 +2,63 @@ import { createContext, useContext, useEffect, useState } from "react";
 import api from "../api/axios";
 
 interface UserType {
+  id: string;
   name: string;
   email: string;
+  roles?: string[];
 }
 
 interface AuthContextType {
   token: string | null;
-  roles: string[];
+  user: UserType | null;
   isAdmin: boolean;
   isUser: boolean;
-  user: UserType | null;
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
+  loading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [token, setToken] = useState<string | null>(null);
-  const [roles, setRoles] = useState<string[]>([]);
   const [user, setUser] = useState<UserType | null>(null);
+  const [loading, setLoading] = useState(true);
 
   // ---------------------------------------------------------
-  // LOAD TOKEN + VALIDATE IT ON REFRESH
+  // RESTORE SESSION ON REFRESH
   // ---------------------------------------------------------
   useEffect(() => {
     const storedToken = localStorage.getItem("token");
-    const storedRoles = localStorage.getItem("roles");
+    const storedUser = localStorage.getItem("user");
 
-    if (storedToken) {
-      setToken(storedToken);
-      api.defaults.headers.common["Authorization"] = `Bearer ${storedToken}`;
+    if (!storedToken) {
+      setLoading(false);
+      return;
     }
 
-    if (storedRoles) {
-      setRoles(JSON.parse(storedRoles));
+    setToken(storedToken);
+
+    if (storedUser) {
+      try {
+        setUser(JSON.parse(storedUser));
+      } catch {
+        localStorage.removeItem("user");
+      }
     }
 
-    // 🔥 Validate token by fetching the real user
-    if (storedToken) {
-      api
-        .get("/api/users/me")
-        .then((res) => {
-          setUser(res.data);
-          localStorage.setItem("user", JSON.stringify(res.data));
-        })
-        .catch(() => {
-          // Token invalid → logout
-          logout();
-        });
-    }
+    api
+      .get("/api/users/me")
+      .then((res) => {
+        setUser(res.data);
+        localStorage.setItem("user", JSON.stringify(res.data));
+      })
+      .catch(() => {
+        logout();
+      })
+      .finally(() => {
+        setLoading(false);
+      });
   }, []);
 
   // ---------------------------------------------------------
@@ -61,20 +68,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const res = await api.post("/api/auth/login", { email, password });
 
     const token = res.data.token;
-    const roles = res.data.roles || [];
 
-    // Save token
     setToken(token);
     localStorage.setItem("token", token);
-    api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
 
-    // Save roles
-    setRoles(roles);
-    localStorage.setItem("roles", JSON.stringify(roles));
-
-    // Fetch user info
     const me = await api.get("/api/users/me");
-    // const me = await api.get("/users/me");
     setUser(me.data);
     localStorage.setItem("user", JSON.stringify(me.data));
   };
@@ -84,32 +82,28 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   // ---------------------------------------------------------
   const logout = () => {
     setToken(null);
-    setRoles([]);
     setUser(null);
 
     localStorage.removeItem("token");
-    localStorage.removeItem("roles");
     localStorage.removeItem("user");
-
-    delete api.defaults.headers.common["Authorization"];
   };
 
   // ---------------------------------------------------------
-  // ROLE HELPERS
+  // ROLE HELPERS (safe optional chaining)
   // ---------------------------------------------------------
-  const isAdmin = roles.includes("ADMIN");
-  const isUser = roles.includes("USER");
+  const isAdmin = !!user?.roles?.includes("ROLE_ADMIN");
+  const isUser = !!user?.roles?.includes("ROLE_USER");
 
   return (
     <AuthContext.Provider
       value={{
         token,
-        roles,
+        user,
         isAdmin,
         isUser,
-        user,
         login,
         logout,
+        loading,
       }}
     >
       {children}

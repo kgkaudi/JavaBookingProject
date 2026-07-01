@@ -9,14 +9,18 @@ import Bookings from "./pages/Bookings";
 import ProLayoutShell from "./layouts/ProLayoutShell";
 import Profile from "./pages/Profile";
 import RoomDetails from "./pages/RoomDetails";
+import Unauthorized from "./pages/Unauthorized";
 
 export default function App({ setDarkMode, darkMode }) {
   return (
     <AuthProvider>
       <Routes>
+
+        {/* Public Routes */}
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
 
+        {/* Protected Layout + Nested Protected Pages */}
         <Route
           element={
             <ProtectedRoute>
@@ -33,6 +37,9 @@ export default function App({ setDarkMode, darkMode }) {
           <Route path="/bookings" element={<Bookings />} />
           <Route path="/profile" element={<Profile />} />
         </Route>
+
+        <Route path="/unauthorized" element={<Unauthorized />} />
+
       </Routes>
     </AuthProvider>
   );

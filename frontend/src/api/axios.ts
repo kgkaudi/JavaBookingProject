@@ -10,7 +10,6 @@ const api = axios.create({
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem("token");
 
-  // Skip adding Authorization for public endpoints
   const isPublic =
     config.url?.includes("/login") ||
     config.url?.includes("/signup") ||
@@ -18,6 +17,7 @@ api.interceptors.request.use((config) => {
     config.url?.includes("/auth/signup");
 
   if (token && !isPublic) {
+    config.headers = config.headers || {};
     config.headers.Authorization = `Bearer ${token}`;
   }
 
@@ -25,20 +25,20 @@ api.interceptors.request.use((config) => {
 });
 
 // ---------------------------------------------------------
-// RESPONSE INTERCEPTOR — auto logout on 401
+// RESPONSE INTERCEPTOR — avoid logout loop on /me
 // ---------------------------------------------------------
 api.interceptors.response.use(
   (res) => res,
   (err) => {
     const status = err.response?.status;
+    const url = err.config?.url;
 
-    if (status === 401) {
-      // Token invalid or expired → logout user
+    const isMeEndpoint =
+      url?.includes("/users/me") || url?.includes("/api/users/me");
+
+    if (status === 401 && !isMeEndpoint) {
       localStorage.removeItem("token");
-      localStorage.removeItem("roles");
       localStorage.removeItem("user");
-
-      // Redirect to login
       window.location.href = "/login";
     }
 
