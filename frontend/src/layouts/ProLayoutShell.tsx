@@ -16,8 +16,9 @@ export default function ProLayoutShell({ setDarkMode, darkMode }) {
   const navigate = useNavigate();
   const { user } = useAuth();
 
+
   // First letter of user's name
-  const initial = user?.name?.charAt(0)?.toUpperCase() || "?";
+  const initial = user?.user.name?.charAt(0)?.toUpperCase() || "?";
 
   const avatarMenu = {
     items: [
