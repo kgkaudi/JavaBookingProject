@@ -1,41 +1,48 @@
 import { ProDescriptions } from "@ant-design/pro-components";
-import { Card } from "antd";
+import { Card, Tag } from "antd";
+import { useAuth } from "../context/AuthContext";
+import dayjs from "dayjs";
 
 export default function Profile() {
-  // In a real app, you would fetch this from your backend or AuthContext
-  const user = {
-    name: "Kostas",
-    email: "kostas@example.com",
-    phone: "+30 690 000 0000",
-    role: "Admin",
-    joined: "2024-01-15",
-  };
+  const { user } = useAuth();
+  // console.log(user); // keep for debugging
+
+  // Handle nested structure
+  const profile = user?.user || user;
+
+  if (!profile) {
+    return (
+      <Card style={{ maxWidth: 800, margin: "0 auto" }}>
+        <p>No user data available.</p>
+      </Card>
+    );
+  }
 
   return (
     <Card title="Profile" style={{ maxWidth: 800, margin: "0 auto" }}>
-      <ProDescriptions
-        column={1}
-        title="User Information"
-        dataSource={user}
-      >
+      <ProDescriptions column={1} title="User Information">
         <ProDescriptions.Item label="Full Name">
-          {user.name}
+          {profile.name || "—"}
         </ProDescriptions.Item>
 
         <ProDescriptions.Item label="Email">
-          {user.email}
+          {profile.email || "—"}
+        </ProDescriptions.Item>
+
+        <ProDescriptions.Item label="Roles">
+          {profile.roles?.length ? (
+            profile.roles.map((r) => (
+              <Tag color={r === "ROLE_ADMIN" ? "red" : "blue"} key={r}>
+                {r.replace("ROLE_", "")}
+              </Tag>
+            ))
+          ) : (
+            "—"
+          )}
         </ProDescriptions.Item>
 
         <ProDescriptions.Item label="Phone">
-          {user.phone}
-        </ProDescriptions.Item>
-
-        <ProDescriptions.Item label="Role">
-          {user.role}
-        </ProDescriptions.Item>
-
-        <ProDescriptions.Item label="Member Since">
-          {user.joined}
+          {profile.phone || "—"}
         </ProDescriptions.Item>
       </ProDescriptions>
     </Card>
