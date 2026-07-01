@@ -1,6 +1,7 @@
 package com.kostas.bookingproject.controllers;
 
 import com.kostas.bookingproject.models.User;
+import com.kostas.bookingproject.security.CustomUserDetails;
 import com.kostas.bookingproject.services.UserService;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -37,8 +38,8 @@ public class UserController {
     // GET AUTHENTICATED USER (SELF)
     // ---------------------------------------------------------
     @GetMapping("/me")
-    public User getMe(@AuthenticationPrincipal User user) {
-        return user;
+    public CustomUserDetails getMe(@AuthenticationPrincipal CustomUserDetails userDetails) {
+        return userDetails;
     }
 
     // ---------------------------------------------------------
