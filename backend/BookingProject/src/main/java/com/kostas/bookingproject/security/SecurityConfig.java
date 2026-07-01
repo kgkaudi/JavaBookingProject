@@ -2,6 +2,7 @@ package com.kostas.bookingproject.security;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -41,13 +42,17 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/api/rooms/price/**").permitAll()
 
+                        // Allow authenticated users to update themselves
+                        .requestMatchers(HttpMethod.PUT, "/api/users/**").authenticated()
+                        .requestMatchers("/api/users/me/**").authenticated()
+
                         // Admin-only endpoints
-                        .requestMatchers("/api/users/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.GET, "/api/users/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/api/users/**").hasRole("ADMIN")
                         .requestMatchers("/api/rooms/**").hasRole("ADMIN")
 
                         // User endpoints
                         .requestMatchers("/api/bookings/**").hasRole("USER")
-                        .requestMatchers("/api/users/me/**").hasAnyRole("USER", "ADMIN")
 
                         // Everything else requires authentication
                         .anyRequest().authenticated())

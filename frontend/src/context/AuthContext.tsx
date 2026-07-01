@@ -1,11 +1,14 @@
 import { createContext, useContext, useEffect, useState } from "react";
+import { message } from "antd";
 import api from "../api/axios";
 
 interface UserType {
   id: string;
   name: string;
   email: string;
+  phone?: string;
   roles?: string[];
+  createdAt?: string;
 }
 
 interface AuthContextType {
@@ -15,6 +18,7 @@ interface AuthContextType {
   isUser: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
+  updateUser: (updatedData: Partial<UserType>) => Promise<void>;
   loading: boolean;
 }
 
@@ -68,7 +72,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const res = await api.post("/api/auth/login", { email, password });
 
     const token = res.data.token;
-
     setToken(token);
     localStorage.setItem("token", token);
 
@@ -89,7 +92,30 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   // ---------------------------------------------------------
-  // ROLE HELPERS (safe optional chaining)
+  // UPDATE LOGGED-IN USER
+  // ---------------------------------------------------------
+  const updateUser = async (updatedData: Partial<UserType>) => {
+    if (!user) return;
+
+    // Handle nested structure from backend
+    const userId = user.id || user.user?.id;
+
+    try {
+      const res = await api.put(`/api/users/${userId}`, updatedData);
+      const updatedUser = res.data;
+
+      setUser(updatedUser);
+      localStorage.setItem("user", JSON.stringify(updatedUser));
+
+      message.success("Profile updated successfully");
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || "Failed to update profile";
+      message.error(msg);
+    }
+  };
+
+  // ---------------------------------------------------------
+  // ROLE HELPERS
   // ---------------------------------------------------------
   const isAdmin = !!user?.roles?.includes("ROLE_ADMIN");
   const isUser = !!user?.roles?.includes("ROLE_USER");
@@ -101,6 +127,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         user,
         isAdmin,
         isUser,
+        updateUser,
         login,
         logout,
         loading,

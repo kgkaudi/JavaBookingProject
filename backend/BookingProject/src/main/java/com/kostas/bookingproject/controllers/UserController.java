@@ -3,6 +3,8 @@ package com.kostas.bookingproject.controllers;
 import com.kostas.bookingproject.models.User;
 import com.kostas.bookingproject.security.CustomUserDetails;
 import com.kostas.bookingproject.services.UserService;
+
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -46,11 +48,12 @@ public class UserController {
     // UPDATE USER (ADMIN or SELF)
     // ---------------------------------------------------------
     @PutMapping("/{userId}")
+    @PreAuthorize("#userId == authentication.principal.id or hasRole('ADMIN')")
     public User updateUser(
             @PathVariable String userId,
             @RequestBody User updatedUser,
-            @AuthenticationPrincipal User currentUser) {
-        return userService.updateUser(userId, updatedUser, currentUser);
+            @AuthenticationPrincipal CustomUserDetails currentUser) {
+        return userService.updateUser(userId, updatedUser, currentUser.getUser());
     }
 
     // ---------------------------------------------------------
