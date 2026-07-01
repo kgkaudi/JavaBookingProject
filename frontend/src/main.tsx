@@ -5,6 +5,8 @@ import App from "./App.tsx";
 
 import { ConfigProvider, theme, App as AntApp } from "antd";
 import enUS from "antd/locale/en_US";
+import { IntlProvider } from "react-intl";
+import { ProConfigProvider } from "@ant-design/pro-provider";
 import "antd/dist/reset.css";
 
 function Root() {
@@ -12,22 +14,26 @@ function Root() {
 
   return (
     <StrictMode>
-      <ConfigProvider
-        locale={enUS}
-        theme={{
-          algorithm: darkMode ? theme.darkAlgorithm : theme.defaultAlgorithm,
-          token: {
-            colorPrimary: "#1677ff",
-            borderRadius: 6,
-          },
-        }}
-      >
-        <AntApp>
-          <BrowserRouter>
-            <App setDarkMode={setDarkMode} darkMode={darkMode} />
-          </BrowserRouter>
-        </AntApp>
-      </ConfigProvider>
+      <IntlProvider locale="en">
+        <ConfigProvider
+          locale={enUS}
+          theme={{
+            algorithm: darkMode ? theme.darkAlgorithm : theme.defaultAlgorithm,
+            token: {
+              colorPrimary: "#1677ff",
+              borderRadius: 6,
+            },
+          }}
+        >
+          <ProConfigProvider dark={darkMode} locale="en_US">
+            <AntApp>
+              <BrowserRouter>
+                <App setDarkMode={setDarkMode} darkMode={darkMode} />
+              </BrowserRouter>
+            </AntApp>
+          </ProConfigProvider>
+        </ConfigProvider>
+      </IntlProvider>
     </StrictMode>
   );
 }

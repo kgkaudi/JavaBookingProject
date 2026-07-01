@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
-import { ProTable } from "@ant-design/pro-components";
-import { Button, Tag, Modal, DatePicker, Select, message } from "antd";
+import { Table, Button, Tag, Modal, DatePicker, Select, message } from "antd";
 import api from "../api/axios";
 import dayjs from "dayjs";
 
@@ -23,7 +22,7 @@ export default function Bookings() {
     try {
       const res = await api.get("/api/bookings/me");
       setBookings(res.data);
-    } catch (err) {
+    } catch {
       message.error("Failed to load bookings");
     } finally {
       setLoading(false);
@@ -54,9 +53,21 @@ export default function Bookings() {
     try {
       setCreating(true);
 
-      await api.post(
-        `/api/bookings?roomId=${roomId}&startDate=${startDate}&endDate=${endDate}`
-      );
+      // Check availability
+      const availabilityRes = await api.get("/api/bookings/availability", {
+        params: { roomId, startDate, endDate },
+      });
+
+      if (!availabilityRes.data) {
+        message.error("Room is not available for the selected dates");
+        setCreating(false);
+        return;
+      }
+
+      // Create booking
+      await api.post("/api/bookings", null, {
+        params: { roomId, startDate, endDate },
+      });
 
       message.success("Booking created");
       await loadBookings();
@@ -73,19 +84,21 @@ export default function Bookings() {
   };
 
   // ---------------------------------------------------------
-  // TABLE COLUMNS
+  // TABLE COLUMNS (responsive)
   // ---------------------------------------------------------
   const columns = [
     {
       title: "Room",
       dataIndex: "roomName",
       key: "roomName",
+      responsive: ["xs", "sm", "md", "lg"],
       sorter: (a, b) => a.roomName.localeCompare(b.roomName),
     },
     {
       title: "From",
       dataIndex: "startDate",
       key: "startDate",
+      responsive: ["xs", "sm", "md", "lg"],
       sorter: (a, b) =>
         new Date(a.startDate).getTime() - new Date(b.startDate).getTime(),
     },
@@ -93,6 +106,7 @@ export default function Bookings() {
       title: "To",
       dataIndex: "endDate",
       key: "endDate",
+      responsive: ["xs", "sm", "md", "lg"],
       sorter: (a, b) =>
         new Date(a.endDate).getTime() - new Date(b.endDate).getTime(),
     },
@@ -100,6 +114,7 @@ export default function Bookings() {
       title: "Status",
       dataIndex: "status",
       key: "status",
+      responsive: ["xs", "sm", "md", "lg"],
       render: (status) => {
         const color =
           status === "CONFIRMED"
@@ -113,24 +128,34 @@ export default function Bookings() {
   ];
 
   return (
-    <div>
-      <ProTable
-        headerTitle="My Bookings"
-        loading={loading}
+    <div style={{ padding: 16 }}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          marginBottom: 16,
+          flexWrap: "wrap",
+          gap: 12,
+        }}
+      >
+        <h2 style={{ margin: 0 }}>My Bookings</h2>
+        <Button type="primary" onClick={() => setOpen(true)}>
+          + New Booking
+        </Button>
+      </div>
+
+      <Table
         columns={columns}
         dataSource={bookings}
         rowKey="id"
-        search={false}
+        loading={loading}
+        size="small" // compact for mobile
         pagination={{ pageSize: 10 }}
-        toolBarRender={() => [
-          <Button type="primary" key="new" onClick={() => setOpen(true)}>
-            + New Booking
-          </Button>,
-        ]}
+        scroll={{ x: "max-content" }} // horizontal scroll on mobile
       />
 
       {/* ---------------------------------------------------------
-          NEW BOOKING MODAL (Ant Design)
+          NEW BOOKING MODAL
       --------------------------------------------------------- */}
       <Modal
         title="Create Booking"
