@@ -117,8 +117,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   // ---------------------------------------------------------
   // ROLE HELPERS
   // ---------------------------------------------------------
-  const isAdmin = !!user?.roles?.includes("ROLE_ADMIN");
-  const isUser = !!user?.roles?.includes("ROLE_USER");
+  const isAdmin = !!user?.user.roles?.includes("ROLE_ADMIN");
+  const isUser = !!user?.user.roles?.includes("ROLE_USER");
 
   return (
     <AuthContext.Provider

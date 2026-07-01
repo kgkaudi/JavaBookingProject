@@ -11,6 +11,12 @@ import Profile from "./pages/Profile";
 import RoomDetails from "./pages/RoomDetails";
 import Unauthorized from "./pages/Unauthorized";
 
+// Admin pages
+import AdminPanel from "./pages/AdminPanel";
+import AdminUsers from "./pages/AdminUsers";
+import AdminRooms from "./pages/AdminRooms";
+import AdminBookings from "./pages/AdminBookings";
+
 export default function App({ setDarkMode, darkMode }) {
   return (
     <AuthProvider>
@@ -31,11 +37,18 @@ export default function App({ setDarkMode, darkMode }) {
             </ProtectedRoute>
           }
         >
+          {/* User Routes */}
           <Route path="/" element={<Rooms />} />
           <Route path="/rooms" element={<Rooms />} />
           <Route path="/rooms/:id" element={<RoomDetails />} />
           <Route path="/bookings" element={<Bookings />} />
           <Route path="/profile" element={<Profile />} />
+
+          {/* Admin Routes */}
+          <Route path="/admin" element={<AdminPanel />} />
+          <Route path="/admin/users" element={<AdminUsers />} />
+          <Route path="/admin/rooms" element={<AdminRooms />} />
+          <Route path="/admin/bookings" element={<AdminBookings />} />
         </Route>
 
         <Route path="/unauthorized" element={<Unauthorized />} />

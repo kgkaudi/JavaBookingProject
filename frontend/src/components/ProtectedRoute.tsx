@@ -1,14 +1,14 @@
 import { ReactNode } from "react";
-import { Navigate } from "react-router-dom";
+import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
 interface ProtectedRouteProps {
   children: ReactNode;
-  requireAdmin?: boolean;
 }
 
-const ProtectedRoute = ({ children, requireAdmin = false }: ProtectedRouteProps) => {
+const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   const { token, user, loading, isAdmin } = useAuth();
+  const location = useLocation();
 
   // ---------------------------------------------------------
   // WAIT FOR AUTH TO LOAD (prevents flicker on refresh)
@@ -25,9 +25,9 @@ const ProtectedRoute = ({ children, requireAdmin = false }: ProtectedRouteProps)
   }
 
   // ---------------------------------------------------------
-  // ADMIN‑ONLY ROUTE
+  // ADMIN‑ONLY ROUTES (auto-detected)
   // ---------------------------------------------------------
-  if (requireAdmin && !isAdmin) {
+  if (location.pathname.startsWith("/admin") && !isAdmin) {
     return <Navigate to="/unauthorized" replace />;
   }
 

@@ -8,17 +8,17 @@ import {
   SettingOutlined,
   MoonOutlined,
   SunOutlined,
+  TeamOutlined,
+  DashboardOutlined,
 } from "@ant-design/icons";
 import { Avatar, Dropdown, message } from "antd";
-import { useAuth } from "../context/AuthContext"; // ⬅ added
+import { useAuth } from "../context/AuthContext";
 
 export default function ProLayoutShell({ setDarkMode, darkMode }) {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, isAdmin, logout } = useAuth();
 
-
-  // First letter of user's name
-  const initial = user?.user.name?.charAt(0)?.toUpperCase() || "?";
+  const initial = user?.user?.name?.charAt(0)?.toUpperCase() || "?";
 
   const avatarMenu = {
     items: [
@@ -39,7 +39,7 @@ export default function ProLayoutShell({ setDarkMode, darkMode }) {
         icon: <LogoutOutlined />,
         label: "Logout",
         onClick: () => {
-          localStorage.removeItem("token");
+          logout();
           message.info("Logged out");
           navigate("/login");
         },
@@ -47,47 +47,66 @@ export default function ProLayoutShell({ setDarkMode, darkMode }) {
     ],
   };
 
+  // ---------------------------------------------------------
+  // ROUTES CONFIGURATION
+  // ---------------------------------------------------------
+  const baseRoutes = [
+    { path: "/", name: "Home", icon: <HomeOutlined /> },
+    { path: "/rooms", name: "Rooms", icon: <BookOutlined /> },
+    { path: "/bookings", name: "Bookings", icon: <BookOutlined /> },
+    { path: "/profile", name: "Profile", icon: <UserOutlined /> },
+  ];
+
+  const adminRoutes = [
+    {
+      path: "/admin",
+      name: "Admin Panel",
+      icon: <DashboardOutlined />,
+      routes: [
+        { path: "/admin/users", name: "Users", icon: <TeamOutlined /> },
+        { path: "/admin/rooms", name: "Rooms", icon: <BookOutlined /> },
+        { path: "/admin/bookings", name: "Bookings", icon: <BookOutlined /> },
+      ],
+    },
+  ];
+
   return (
     <ProLayout
       title="BookingProject"
-      logo="https://ant.design/assets/logo.svg"
+      logo="/booking.svg"
       layout="mix"
       fixedHeader
       navTheme={darkMode ? "dark" : "light"}
       contentStyle={{ minHeight: "calc(100vh - 64px)", padding: 24 }}
       route={{
         path: "/",
-        routes: [
-          { path: "/", name: "Home", icon: <HomeOutlined /> },
-          { path: "/rooms", name: "Rooms", icon: <BookOutlined /> },
-          { path: "/bookings", name: "Bookings", icon: <BookOutlined /> },
-          { path: "/profile", name: "Profile", icon: <UserOutlined /> },
-        ],
+        routes: isAdmin ? [...baseRoutes, ...adminRoutes] : baseRoutes,
       }}
       menuItemRender={(item, dom) => <Link to={item.path || "/"}>{dom}</Link>}
-      breadcrumbRender={(routers = []) => {
-        return routers.map((r) => {
+      breadcrumbRender={(routers = []) =>
+        routers.map((r) => {
           const nameMap: Record<string, string> = {
             "/": "Home",
             "/rooms": "Rooms",
             "/bookings": "Bookings",
             "/profile": "Profile",
+            "/admin": "Admin Panel",
+            "/admin/users": "Users",
+            "/admin/rooms": "Rooms",
+            "/admin/bookings": "Bookings",
           };
 
           if (r.path?.startsWith("/rooms/")) {
             const id = r.path.split("/")[2];
-            return {
-              ...r,
-              breadcrumbName: `Room ${id}`,
-            };
+            return { ...r, breadcrumbName: `Room ${id}` };
           }
 
           return {
             ...r,
             breadcrumbName: nameMap[r.path] || r.breadcrumbName || r.name,
           };
-        });
-      }}
+        })
+      }
       actionsRender={() => [
         darkMode ? (
           <SunOutlined

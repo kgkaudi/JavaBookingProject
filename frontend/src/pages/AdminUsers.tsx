@@ -1,32 +1,20 @@
 import { useEffect, useState } from "react";
-import {
-  Table,
-  Tag,
-  Button,
-  message,
-  Modal,
-  Form,
-  Input,
-  Select,
-  Switch,
-} from "antd";
+import { Table, Tag, Button, message, Modal, Form, Input, Select } from "antd";
 import axios from "../api/axios";
 
 interface User {
   id: string;
   name: string;
   email: string;
+  phone: string;
   roles: string[];
-  active: boolean;
 }
 
 export default function AdminUsers() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(false);
-
   const [modalVisible, setModalVisible] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
-
   const [form] = Form.useForm();
 
   // ---------------------------------------------------------
@@ -57,8 +45,8 @@ export default function AdminUsers() {
       form.setFieldsValue({
         name: user.name,
         email: user.email,
+        phone: user.phone,
         roles: user.roles,
-        active: user.active,
       });
     } else {
       setEditingUser(null);
@@ -75,11 +63,9 @@ export default function AdminUsers() {
       const values = await form.validateFields();
 
       if (editingUser) {
-        // UPDATE
         await axios.put(`/api/users/${editingUser.id}`, values);
         message.success("User updated");
       } else {
-        // CREATE
         await axios.post("/api/users", values);
         message.success("User created");
       }
@@ -114,21 +100,6 @@ export default function AdminUsers() {
   };
 
   // ---------------------------------------------------------
-  // TOGGLE ACTIVE STATUS
-  // ---------------------------------------------------------
-  const toggleActive = async (user: User) => {
-    try {
-      await axios.patch(`/api/users/${user.id}/active`, {
-        active: !user.active,
-      });
-      message.success("User status updated");
-      loadUsers();
-    } catch {
-      message.error("Failed to update status");
-    }
-  };
-
-  // ---------------------------------------------------------
   // TABLE COLUMNS
   // ---------------------------------------------------------
   const columns = [
@@ -145,6 +116,11 @@ export default function AdminUsers() {
       sorter: (a: User, b: User) => a.email.localeCompare(b.email),
     },
     {
+      title: "Phone",
+      dataIndex: "phone",
+      key: "phone",
+    },
+    {
       title: "Roles",
       dataIndex: "roles",
       key: "roles",
@@ -156,13 +132,6 @@ export default function AdminUsers() {
         )),
     },
     {
-      title: "Active",
-      dataIndex: "active",
-      key: "active",
-      render: (active: boolean) =>
-        active ? <Tag color="green">Active</Tag> : <Tag color="red">Inactive</Tag>,
-    },
-    {
       title: "Actions",
       key: "actions",
       render: (_: any, user: User) => (
@@ -170,15 +139,6 @@ export default function AdminUsers() {
           <Button size="small" onClick={() => openModal(user)}>
             Edit
           </Button>
-
-          <Button
-            size="small"
-            type={user.active ? "default" : "primary"}
-            onClick={() => toggleActive(user)}
-          >
-            {user.active ? "Deactivate" : "Activate"}
-          </Button>
-
           <Button danger size="small" onClick={() => deleteUser(user.id)}>
             Delete
           </Button>
@@ -246,6 +206,14 @@ export default function AdminUsers() {
           </Form.Item>
 
           <Form.Item
+            name="phone"
+            label="Phone"
+            rules={[{ required: true, message: "Phone is required" }]}
+          >
+            <Input placeholder="Enter phone number" />
+          </Form.Item>
+
+          <Form.Item
             name="roles"
             label="Roles"
             rules={[{ required: true, message: "Select at least one role" }]}
@@ -257,10 +225,6 @@ export default function AdminUsers() {
                 { value: "ROLE_ADMIN", label: "Admin" },
               ]}
             />
-          </Form.Item>
-
-          <Form.Item name="active" label="Active" valuePropName="checked">
-            <Switch />
           </Form.Item>
         </Form>
       </Modal>

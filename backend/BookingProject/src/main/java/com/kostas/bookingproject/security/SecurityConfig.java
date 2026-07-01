@@ -70,9 +70,19 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
 
-        config.setAllowedOrigins(List.of("http://localhost:5173")); // your frontend
+        // Allow your frontend origin
+        config.setAllowedOrigins(List.of("http://localhost:5173"));
+
+        // Allow all standard HTTP methods
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        config.setAllowedHeaders(List.of("Authorization", "Content-Type"));
+
+        // Allow all headers (important for Authorization)
+        config.setAllowedHeaders(List.of("*"));
+
+        // Expose headers so frontend can read them
+        config.setExposedHeaders(List.of("Authorization", "Content-Type"));
+
+        // Allow credentials (cookies, tokens)
         config.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
@@ -93,5 +103,4 @@ public class SecurityConfig {
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
-
 }
