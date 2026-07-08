@@ -51,7 +51,7 @@ class BookingControllerIT {
                 null,
                 "Kostas",
                 "k@k.com",
-                "ENC", // If your login uses BCrypt, replace this with a real hash
+                "ENC",
                 "6900000000",
                 List.of("ROLE_USER")
         ));
@@ -84,6 +84,7 @@ class BookingControllerIT {
                 null,
                 user.getId(),
                 room.getId(),
+                "confirmed",
                 LocalDate.parse("2026-01-01"),
                 LocalDate.parse("2026-01-05"),
                 0.0
@@ -110,6 +111,7 @@ class BookingControllerIT {
                 null,
                 user.getId(),
                 room.getId(),
+                "confirmed",
                 LocalDate.parse("2026-01-01"),
                 LocalDate.parse("2026-01-05"),
                 0.0
@@ -128,6 +130,7 @@ class BookingControllerIT {
                 null,
                 user.getId(),
                 room.getId(),
+                "confirmed",
                 LocalDate.parse("2026-01-01"),
                 LocalDate.parse("2026-01-05"),
                 200.0
@@ -137,6 +140,7 @@ class BookingControllerIT {
                 null,
                 user.getId(),
                 room.getId(),
+                "confirmed",
                 LocalDate.parse("2026-01-03"),
                 LocalDate.parse("2026-01-07"),
                 0.0
@@ -155,6 +159,7 @@ class BookingControllerIT {
                 null,
                 user.getId(),
                 room.getId(),
+                "confirmed",
                 LocalDate.parse("2026-01-10"),
                 LocalDate.parse("2026-01-05"),
                 0.0
@@ -173,6 +178,7 @@ class BookingControllerIT {
                 null,
                 user.getId(),
                 room.getId(),
+                "confirmed",
                 LocalDate.parse("2026-01-05"),
                 LocalDate.parse("2026-01-05"),
                 0.0
@@ -195,6 +201,7 @@ class BookingControllerIT {
                 null,
                 user.getId(),
                 null,
+                "confirmed",
                 LocalDate.parse("2026-01-01"),
                 LocalDate.parse("2026-01-05"),
                 0.0
@@ -213,6 +220,7 @@ class BookingControllerIT {
                 null,
                 user.getId(),
                 room.getId(),
+                "confirmed",
                 null,
                 null,
                 0.0
@@ -244,6 +252,7 @@ class BookingControllerIT {
                 null,
                 user.getId(),
                 room.getId(),
+                "confirmed",
                 LocalDate.parse("2026-01-01"),
                 LocalDate.parse("2026-01-05"),
                 0.0
@@ -252,13 +261,13 @@ class BookingControllerIT {
         mvc.perform(post("/api/bookings")
                         .contentType("application/json")
                         .content(mapper.writeValueAsString(req)))
-                .andExpect(status().isUnauthorized()); // ✔ 401, not 403
+                .andExpect(status().isUnauthorized());
     }
 
     @Test
     void cannot_list_bookings_without_token() throws Exception {
         mvc.perform(get("/api/bookings"))
-                .andExpect(status().isUnauthorized()); // ✔ 401
+                .andExpect(status().isUnauthorized());
     }
 
     @Test
@@ -267,6 +276,7 @@ class BookingControllerIT {
                 null,
                 user.getId(),
                 room.getId(),
+                "confirmed",
                 LocalDate.parse("2026-01-01"),
                 LocalDate.parse("2026-01-05"),
                 0.0
@@ -276,7 +286,7 @@ class BookingControllerIT {
                         .header("Authorization", "Bearer invalid")
                         .contentType("application/json")
                         .content(mapper.writeValueAsString(req)))
-                .andExpect(status().isForbidden()); // ✔ 403
+                .andExpect(status().isForbidden());
     }
 
     // ------------------------------------------------------------
@@ -289,6 +299,7 @@ class BookingControllerIT {
                 null,
                 user.getId(),
                 "nonexistent-room",
+                "confirmed",
                 LocalDate.parse("2026-01-01"),
                 LocalDate.parse("2026-01-05"),
                 0.0
@@ -303,12 +314,13 @@ class BookingControllerIT {
 
     @Test
     void cannot_create_booking_if_user_does_not_exist() throws Exception {
-        users.deleteAll(); // remove user
+        users.deleteAll();
 
         Booking req = new Booking(
                 null,
-                user.getId(), // now invalid
+                user.getId(),
                 room.getId(),
+                "confirmed",
                 LocalDate.parse("2026-01-01"),
                 LocalDate.parse("2026-01-05"),
                 0.0

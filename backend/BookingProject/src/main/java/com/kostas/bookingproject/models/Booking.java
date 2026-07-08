@@ -19,6 +19,7 @@ public class Booking {
 
     private String userId;
     private String roomId;
+    private String status;
 
     private LocalDate startDate;
     private LocalDate endDate;

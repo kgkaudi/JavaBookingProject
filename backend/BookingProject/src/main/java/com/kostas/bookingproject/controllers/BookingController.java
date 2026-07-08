@@ -90,6 +90,18 @@ public class BookingController {
     }
 
     // ---------------------------------------------------------
+    // UPDATE BOOKING
+    // ---------------------------------------------------------
+    @PutMapping("/{bookingId}")
+    public BookingResponse updateBooking(
+            @PathVariable String bookingId,
+            @AuthenticationPrincipal UserDetails userDetails,
+            @RequestBody Booking updatedBooking) {
+
+        return bookingService.updateBooking(bookingId, userDetails.getUsername(), updatedBooking);
+    }
+
+    // ---------------------------------------------------------
     // CANCEL BOOKING
     // ---------------------------------------------------------
     @DeleteMapping("/{bookingId}")

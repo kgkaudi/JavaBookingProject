@@ -20,8 +20,8 @@ public class BookingService {
     private final UserRepository userRepository;
 
     public BookingService(BookingRepository bookingRepository,
-                          RoomRepository roomRepository,
-                          UserRepository userRepository) {
+            RoomRepository roomRepository,
+            UserRepository userRepository) {
         this.bookingRepository = bookingRepository;
         this.roomRepository = roomRepository;
         this.userRepository = userRepository;
@@ -31,7 +31,7 @@ public class BookingService {
     // CREATE BOOKING
     // ---------------------------------------------------------
     public Booking createBooking(String email, String roomId,
-                                 LocalDate startDate, LocalDate endDate) {
+            LocalDate startDate, LocalDate endDate) {
 
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
@@ -61,9 +61,8 @@ public class BookingService {
     // ---------------------------------------------------------
     public boolean isRoomAvailable(String roomId, LocalDate startDate, LocalDate endDate) {
         List<Booking> bookings = bookingRepository.findByRoomId(roomId);
-        return bookings.stream().noneMatch(b ->
-                !startDate.isAfter(b.getEndDate()) && !b.getStartDate().isAfter(endDate)
-        );
+        return bookings.stream()
+                .noneMatch(b -> !startDate.isAfter(b.getEndDate()) && !b.getStartDate().isAfter(endDate));
     }
 
     // ---------------------------------------------------------
@@ -119,6 +118,30 @@ public class BookingService {
     }
 
     // ---------------------------------------------------------
+    // UPDATE BOOKING
+    // ---------------------------------------------------------
+    public BookingResponse updateBooking(String bookingId, String email, Booking updatedBooking) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        boolean isAdmin = user.getRoles().contains("ROLE_ADMIN");
+
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new RuntimeException("Booking not found"));
+
+        if (!booking.getUserId().equals(user.getId()) && !isAdmin) {
+            throw new RuntimeException("Not authorized to update this booking");
+        }
+
+        booking.setStartDate(updatedBooking.getStartDate());
+        booking.setEndDate(updatedBooking.getEndDate());
+        booking.setStatus(updatedBooking.getStatus());
+        booking.setRoomId(updatedBooking.getRoomId());
+
+        bookingRepository.save(booking);
+        return mapBookingToResponse(booking);
+    }
+
+    // ---------------------------------------------------------
     // CANCEL BOOKING
     // ---------------------------------------------------------
     public void cancelBooking(String bookingId, String email) {
@@ -151,7 +174,6 @@ public class BookingService {
                 roomName,
                 b.getStartDate(),
                 b.getEndDate(),
-                b.getTotalPrice()
-        );
+                b.getTotalPrice());
     }
 }

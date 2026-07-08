@@ -54,7 +54,6 @@ class BookingDeepIT {
         rooms.deleteAll();
         users.deleteAll();
 
-        // ✔ Correct role format
         user = users.save(new User(
                 null,
                 "Kostas",
@@ -82,7 +81,6 @@ class BookingDeepIT {
                 List.of("ROLE_ADMIN")
         ));
 
-        // ✔ Correct JWT role format
         userToken      = "Bearer " + jwt.generateToken(user.getId(), List.of("ROLE_USER"));
         otherUserToken = "Bearer " + jwt.generateToken(otherUser.getId(), List.of("ROLE_USER"));
         adminToken     = "Bearer " + jwt.generateToken(admin.getId(), List.of("ROLE_ADMIN"));
@@ -114,6 +112,7 @@ class BookingDeepIT {
                 null,
                 user.getId(),
                 room.getId(),
+                "confirmed",
                 LocalDate.parse("2026-01-01"),
                 LocalDate.parse("2026-01-05"),
                 0.0
@@ -135,6 +134,7 @@ class BookingDeepIT {
                 null,
                 user.getId(),
                 room.getId(),
+                "confirmed",
                 LocalDate.parse("2026-01-01"),
                 LocalDate.parse("2026-01-05"),
                 200.0
@@ -144,6 +144,7 @@ class BookingDeepIT {
                 null,
                 otherUser.getId(),
                 otherRoom.getId(),
+                "confirmed",
                 LocalDate.parse("2026-02-01"),
                 LocalDate.parse("2026-02-05"),
                 400.0
@@ -161,6 +162,7 @@ class BookingDeepIT {
                 null,
                 user.getId(),
                 room.getId(),
+                "confirmed",
                 LocalDate.parse("2026-01-01"),
                 LocalDate.parse("2026-01-05"),
                 200.0
@@ -170,6 +172,7 @@ class BookingDeepIT {
                 null,
                 otherUser.getId(),
                 otherRoom.getId(),
+                "confirmed",
                 LocalDate.parse("2026-02-01"),
                 LocalDate.parse("2026-02-05"),
                 400.0
@@ -194,6 +197,7 @@ class BookingDeepIT {
                 null,
                 user.getId(),
                 room.getId(),
+                "confirmed",
                 LocalDate.parse("2026-01-01"),
                 LocalDate.parse("2026-01-05"),
                 0.0
@@ -212,6 +216,7 @@ class BookingDeepIT {
                 null,
                 user.getId(),
                 room.getId(),
+                "confirmed",
                 LocalDate.parse("2026-01-01"),
                 LocalDate.parse("2026-01-05"),
                 200.0
@@ -221,6 +226,7 @@ class BookingDeepIT {
                 null,
                 user.getId(),
                 room.getId(),
+                "confirmed",
                 LocalDate.parse("2026-01-03"),
                 LocalDate.parse("2026-01-07"),
                 0.0
@@ -239,6 +245,7 @@ class BookingDeepIT {
                 null,
                 user.getId(),
                 room.getId(),
+                "confirmed",
                 LocalDate.parse("2026-01-10"),
                 LocalDate.parse("2026-01-05"),
                 0.0
@@ -257,6 +264,7 @@ class BookingDeepIT {
                 null,
                 user.getId(),
                 room.getId(),
+                "confirmed",
                 LocalDate.parse("2026-01-05"),
                 LocalDate.parse("2026-01-05"),
                 0.0
@@ -279,6 +287,7 @@ class BookingDeepIT {
                 null,
                 user.getId(),
                 null,
+                "confirmed",
                 LocalDate.parse("2026-01-01"),
                 LocalDate.parse("2026-01-05"),
                 0.0
@@ -297,6 +306,7 @@ class BookingDeepIT {
                 null,
                 user.getId(),
                 room.getId(),
+                "confirmed",
                 null,
                 null,
                 0.0
@@ -328,6 +338,7 @@ class BookingDeepIT {
                 null,
                 user.getId(),
                 room.getId(),
+                "confirmed",
                 LocalDate.parse("2026-01-01"),
                 LocalDate.parse("2026-01-05"),
                 0.0
@@ -336,13 +347,13 @@ class BookingDeepIT {
         mvc.perform(post("/api/bookings")
                         .contentType("application/json")
                         .content(mapper.writeValueAsString(req)))
-                .andExpect(status().isUnauthorized()); // ✔ 401
+                .andExpect(status().isUnauthorized());
     }
 
     @Test
     void cannot_list_bookings_without_token() throws Exception {
         mvc.perform(get("/api/bookings"))
-                .andExpect(status().isUnauthorized()); // ✔ 401
+                .andExpect(status().isUnauthorized());
     }
 
     @Test
@@ -351,6 +362,7 @@ class BookingDeepIT {
                 null,
                 user.getId(),
                 room.getId(),
+                "confirmed",
                 LocalDate.parse("2026-01-01"),
                 LocalDate.parse("2026-01-05"),
                 0.0
@@ -360,7 +372,7 @@ class BookingDeepIT {
                         .header("Authorization", "Bearer invalid")
                         .contentType("application/json")
                         .content(mapper.writeValueAsString(req)))
-                .andExpect(status().isForbidden()); // ✔ 403
+                .andExpect(status().isForbidden());
     }
 
     // ------------------------------------------------------------
@@ -373,6 +385,7 @@ class BookingDeepIT {
                 null,
                 user.getId(),
                 "nonexistent-room",
+                "confirmed",
                 LocalDate.parse("2026-01-01"),
                 LocalDate.parse("2026-01-05"),
                 0.0
@@ -393,6 +406,7 @@ class BookingDeepIT {
                 null,
                 user.getId(),
                 room.getId(),
+                "confirmed",
                 LocalDate.parse("2026-01-01"),
                 LocalDate.parse("2026-01-05"),
                 0.0
@@ -415,6 +429,7 @@ class BookingDeepIT {
                 null,
                 user.getId(),
                 room.getId(),
+                "confirmed",
                 LocalDate.parse("2026-01-01"),
                 LocalDate.parse("2026-01-05"),
                 200.0
@@ -433,6 +448,7 @@ class BookingDeepIT {
                 null,
                 otherUser.getId(),
                 room.getId(),
+                "confirmed",
                 LocalDate.parse("2026-01-01"),
                 LocalDate.parse("2026-01-05"),
                 200.0
@@ -449,6 +465,7 @@ class BookingDeepIT {
                 null,
                 user.getId(),
                 room.getId(),
+                "confirmed",
                 LocalDate.parse("2026-01-01"),
                 LocalDate.parse("2026-01-05"),
                 200.0
