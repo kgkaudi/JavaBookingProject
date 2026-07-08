@@ -20,8 +20,8 @@ public class BookingService {
     private final UserRepository userRepository;
 
     public BookingService(BookingRepository bookingRepository,
-                          RoomRepository roomRepository,
-                          UserRepository userRepository) {
+            RoomRepository roomRepository,
+            UserRepository userRepository) {
         this.bookingRepository = bookingRepository;
         this.roomRepository = roomRepository;
         this.userRepository = userRepository;
@@ -31,7 +31,7 @@ public class BookingService {
     // CREATE BOOKING
     // ---------------------------------------------------------
     public Booking createBooking(String email, String roomId,
-                                 LocalDate startDate, LocalDate endDate) {
+            LocalDate startDate, LocalDate endDate) {
 
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
@@ -61,9 +61,7 @@ public class BookingService {
         List<Booking> bookings = bookingRepository.findByRoomId(roomId);
 
         return bookings.stream()
-                .noneMatch(b ->
-                        !(endDate.isBefore(b.getStartDate()) || startDate.isAfter(b.getEndDate()))
-                );
+                .noneMatch(b -> !(endDate.isBefore(b.getStartDate()) || startDate.isAfter(b.getEndDate())));
     }
 
     // ---------------------------------------------------------
@@ -168,14 +166,19 @@ public class BookingService {
     // ENTITY → DTO
     // ---------------------------------------------------------
     public BookingResponse toResponse(Booking b) {
+        Room room = roomRepository.findById(b.getRoomId()).orElse(null);
+        String roomName = (room != null)
+                ? "Room " + room.getRoomNumber()
+                : "Unknown Room";
+
         return new BookingResponse(
                 b.getId(),
-                b.getRoomId(),
+                roomName,
                 b.getUserId(),
                 b.getStatus(),
                 b.getStartDate(),
                 b.getEndDate(),
-                b.getTotalPrice()
-        );
+                b.getTotalPrice());
     }
+
 }

@@ -89,7 +89,7 @@ export default function Bookings() {
   const columns = [
     {
       title: "Room",
-      dataIndex: "roomName",
+      dataIndex: "room",
       key: "roomName",
       responsive: ["xs", "sm", "md", "lg"],
       sorter: (a, b) => a.roomName.localeCompare(b.roomName),
