@@ -9,6 +9,7 @@ import com.kostas.bookingproject.repositories.UserRepository;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -113,7 +114,13 @@ class BookingServiceTest {
 
         service.cancelBooking("b1", "k@k.com");
 
-        verify(bookings).delete(b);
+        ArgumentCaptor<Booking> captor = ArgumentCaptor.forClass(Booking.class);
+        verify(bookings).save(captor.capture());
+
+        Booking saved = captor.getValue();
+        assertEquals("cancelled", saved.getStatus());
+        assertEquals("u1", saved.getUserId());
+        assertEquals("b1", saved.getId());
     }
 
     @Test

@@ -20,8 +20,8 @@ public class BookingService {
     private final UserRepository userRepository;
 
     public BookingService(BookingRepository bookingRepository,
-            RoomRepository roomRepository,
-            UserRepository userRepository) {
+                          RoomRepository roomRepository,
+                          UserRepository userRepository) {
         this.bookingRepository = bookingRepository;
         this.roomRepository = roomRepository;
         this.userRepository = userRepository;
@@ -31,17 +31,13 @@ public class BookingService {
     // CREATE BOOKING
     // ---------------------------------------------------------
     public Booking createBooking(String email, String roomId,
-            LocalDate startDate, LocalDate endDate) {
+                                 LocalDate startDate, LocalDate endDate) {
 
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
         Room room = roomRepository.findById(roomId)
                 .orElseThrow(() -> new RuntimeException("Room not found"));
-
-        if (!room.isAvailable()) {
-            throw new IllegalStateException("Room is not available");
-        }
 
         if (!isRoomAvailable(roomId, startDate, endDate)) {
             throw new IllegalStateException("Room is already booked for the selected dates");
@@ -52,6 +48,8 @@ public class BookingService {
         booking.setRoomId(room.getId());
         booking.setStartDate(startDate);
         booking.setEndDate(endDate);
+        booking.setStatus("pending");
+        booking.setTotalPrice(room.getPrice());
 
         return bookingRepository.save(booking);
     }
@@ -61,16 +59,20 @@ public class BookingService {
     // ---------------------------------------------------------
     public boolean isRoomAvailable(String roomId, LocalDate startDate, LocalDate endDate) {
         List<Booking> bookings = bookingRepository.findByRoomId(roomId);
+
         return bookings.stream()
-                .noneMatch(b -> !startDate.isAfter(b.getEndDate()) && !b.getStartDate().isAfter(endDate));
+                .noneMatch(b ->
+                        !(endDate.isBefore(b.getStartDate()) || startDate.isAfter(b.getEndDate()))
+                );
     }
 
     // ---------------------------------------------------------
     // GET ALL BOOKINGS (ADMIN)
     // ---------------------------------------------------------
     public List<BookingResponse> getAllBookings() {
-        return bookingRepository.findAll().stream()
-                .map(this::mapBookingToResponse)
+        return bookingRepository.findAll()
+                .stream()
+                .map(this::toResponse)
                 .toList();
     }
 
@@ -85,14 +87,13 @@ public class BookingService {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        boolean isAdmin = user.getRoles().stream()
-                .anyMatch(r -> r.equals("ROLE_ADMIN"));
+        boolean isAdmin = user.getRoles().contains("ROLE_ADMIN");
 
         if (!booking.getUserId().equals(user.getId()) && !isAdmin) {
             throw new RuntimeException("Not authorized to view this booking");
         }
 
-        return mapBookingToResponse(booking);
+        return toResponse(booking);
     }
 
     // ---------------------------------------------------------
@@ -103,26 +104,27 @@ public class BookingService {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        List<Booking> bookings = bookingRepository.findByUserId(user.getId());
-
-        return bookings.stream()
-                .map(this::mapBookingToResponse)
+        return bookingRepository.findByUserId(user.getId())
+                .stream()
+                .map(this::toResponse)
                 .toList();
     }
 
     // ---------------------------------------------------------
-    // GET BOOKINGS FOR ROOM
+    // GET BOOKINGS FOR ROOM (ADMIN)
     // ---------------------------------------------------------
     public List<Booking> getBookingsForRoom(String roomId) {
         return bookingRepository.findByRoomId(roomId);
     }
 
     // ---------------------------------------------------------
-    // UPDATE BOOKING
+    // UPDATE BOOKING (ADMIN)
     // ---------------------------------------------------------
     public BookingResponse updateBooking(String bookingId, String email, Booking updatedBooking) {
+
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
+
         boolean isAdmin = user.getRoles().contains("ROLE_ADMIN");
 
         Booking booking = bookingRepository.findById(bookingId)
@@ -136,13 +138,13 @@ public class BookingService {
         booking.setEndDate(updatedBooking.getEndDate());
         booking.setStatus(updatedBooking.getStatus());
         booking.setRoomId(updatedBooking.getRoomId());
+        booking.setTotalPrice(updatedBooking.getTotalPrice());
 
-        bookingRepository.save(booking);
-        return mapBookingToResponse(booking);
+        return toResponse(bookingRepository.save(booking));
     }
 
     // ---------------------------------------------------------
-    // CANCEL BOOKING
+    // CANCEL BOOKING (USER + ADMIN)
     // ---------------------------------------------------------
     public void cancelBooking(String bookingId, String email) {
 
@@ -152,28 +154,28 @@ public class BookingService {
         Booking booking = bookingRepository.findById(bookingId)
                 .orElseThrow(() -> new RuntimeException("Booking not found"));
 
-        if (!booking.getUserId().equals(user.getId())) {
-            throw new RuntimeException("You cannot cancel someone else's booking");
+        boolean isAdmin = user.getRoles().contains("ROLE_ADMIN");
+
+        if (!booking.getUserId().equals(user.getId()) && !isAdmin) {
+            throw new RuntimeException("Not authorized to cancel this booking");
         }
 
-        bookingRepository.delete(booking);
+        booking.setStatus("cancelled");
+        bookingRepository.save(booking);
     }
 
     // ---------------------------------------------------------
-    // MAPPING
+    // ENTITY → DTO
     // ---------------------------------------------------------
-    private BookingResponse mapBookingToResponse(Booking b) {
-        Room room = roomRepository.findById(b.getRoomId()).orElse(null);
-
-        String roomName = (room != null)
-                ? "Room " + room.getRoomNumber() + " — " + room.getType()
-                : "Unknown Room";
-
+    public BookingResponse toResponse(Booking b) {
         return new BookingResponse(
                 b.getId(),
-                roomName,
+                b.getRoomId(),
+                b.getUserId(),
+                b.getStatus(),
                 b.getStartDate(),
                 b.getEndDate(),
-                b.getTotalPrice());
+                b.getTotalPrice()
+        );
     }
 }

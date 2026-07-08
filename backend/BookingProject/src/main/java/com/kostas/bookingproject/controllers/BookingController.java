@@ -22,16 +22,23 @@ public class BookingController {
     }
 
     // ---------------------------------------------------------
-    // CREATE BOOKING
+    // CREATE BOOKING (USER)
     // ---------------------------------------------------------
     @PostMapping
-    public Booking createBooking(
+    public BookingResponse createBooking(
             @AuthenticationPrincipal UserDetails userDetails,
             @RequestParam String roomId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
 
-        return bookingService.createBooking(userDetails.getUsername(), roomId, startDate, endDate);
+        Booking booking = bookingService.createBooking(
+                userDetails.getUsername(),
+                roomId,
+                startDate,
+                endDate
+        );
+
+        return bookingService.toResponse(booking);
     }
 
     // ---------------------------------------------------------
@@ -46,7 +53,9 @@ public class BookingController {
     // GET BOOKINGS FOR AUTHENTICATED USER
     // ---------------------------------------------------------
     @GetMapping("/me")
-    public List<BookingResponse> getMyBookings(@AuthenticationPrincipal UserDetails userDetails) {
+    public List<BookingResponse> getMyBookings(
+            @AuthenticationPrincipal UserDetails userDetails) {
+
         return bookingService.getBookingsForUser(userDetails.getUsername());
     }
 
@@ -62,8 +71,11 @@ public class BookingController {
     // GET BOOKINGS FOR ROOM (ADMIN)
     // ---------------------------------------------------------
     @GetMapping("/room/{roomId}")
-    public List<Booking> getBookingsForRoom(@PathVariable String roomId) {
-        return bookingService.getBookingsForRoom(roomId);
+    public List<BookingResponse> getBookingsForRoom(@PathVariable String roomId) {
+        return bookingService.getBookingsForRoom(roomId)
+                .stream()
+                .map(bookingService::toResponse)
+                .toList();
     }
 
     // ---------------------------------------------------------
@@ -90,7 +102,7 @@ public class BookingController {
     }
 
     // ---------------------------------------------------------
-    // UPDATE BOOKING
+    // UPDATE BOOKING (ADMIN)
     // ---------------------------------------------------------
     @PutMapping("/{bookingId}")
     public BookingResponse updateBooking(
@@ -98,17 +110,22 @@ public class BookingController {
             @AuthenticationPrincipal UserDetails userDetails,
             @RequestBody Booking updatedBooking) {
 
-        return bookingService.updateBooking(bookingId, userDetails.getUsername(), updatedBooking);
+        return bookingService.updateBooking(
+                bookingId,
+                userDetails.getUsername(),
+                updatedBooking
+        );
     }
 
     // ---------------------------------------------------------
-    // CANCEL BOOKING
+    // CANCEL BOOKING (USER + ADMIN)
     // ---------------------------------------------------------
-    @DeleteMapping("/{bookingId}")
-    public void cancelBooking(
+    @PatchMapping("/{bookingId}/cancel")
+    public BookingResponse cancelBooking(
             @PathVariable String bookingId,
             @AuthenticationPrincipal UserDetails userDetails) {
 
         bookingService.cancelBooking(bookingId, userDetails.getUsername());
+        return bookingService.getBookingById(bookingId, userDetails.getUsername());
     }
 }
