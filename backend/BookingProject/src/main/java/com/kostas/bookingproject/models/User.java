@@ -6,6 +6,7 @@ import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Data
@@ -22,5 +23,17 @@ public class User {
     private String password;
     private String phone;
 
-    private List<String> roles;
+    // Always stored as a list in DB
+    private List<String> roles = new ArrayList<>();
+
+    public String getRole() {
+        if (roles == null || roles.isEmpty()) {
+            return null;
+        }
+        return roles.get(0);
+    }
+
+    public void setRole(String role) {
+        this.roles = List.of(role);
+    }
 }

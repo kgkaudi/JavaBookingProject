@@ -86,7 +86,7 @@ class UserControllerIT {
     void updateUser_success() throws Exception {
         User updated = new User("u1", "Updated", "updated@test.com", "ENC", "6900000000", List.of("ROLE_USER"));
 
-        when(userService.updateUser(eq("u1"), any(), any())).thenReturn(updated);
+        when(userService.updateUser(eq("u1"), any())).thenReturn(updated);
 
         mvc.perform(put("/api/users/u1")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -98,7 +98,7 @@ class UserControllerIT {
     @Test
     @WithMockUser(roles = "ADMIN")
     void updateUser_notFound() throws Exception {
-        when(userService.updateUser(eq("u1"), any(), any()))
+        when(userService.updateUser(eq("u1"), any()))
                 .thenThrow(new IllegalArgumentException("User not found"));
 
         mvc.perform(put("/api/users/u1")

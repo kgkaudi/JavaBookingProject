@@ -7,7 +7,7 @@ interface User {
   name: string;
   email: string;
   phone: string;
-  roles: string[];
+  role: string; // ✅ single role
 }
 
 export default function AdminUsers() {
@@ -24,7 +24,13 @@ export default function AdminUsers() {
     try {
       setLoading(true);
       const res = await axios.get("/api/users");
-      setUsers(res.data);
+
+      const mapped = res.data.map((u: any) => ({
+        ...u,
+        role: Array.isArray(u.roles) ? u.roles[0] : u.role,
+      }));
+
+      setUsers(mapped);
     } catch {
       message.error("Failed to load users");
     } finally {
@@ -46,7 +52,7 @@ export default function AdminUsers() {
         name: user.name,
         email: user.email,
         phone: user.phone,
-        roles: user.roles,
+        role: user.role,
       });
     } else {
       setEditingUser(null);
@@ -62,11 +68,16 @@ export default function AdminUsers() {
     try {
       const values = await form.validateFields();
 
+      const payload = {
+        ...values,
+        role: values.role,
+      };
+
       if (editingUser) {
-        await axios.put(`/api/users/${editingUser.id}`, values);
+        await axios.put(`/api/users/${editingUser.id}`, payload);
         message.success("User updated");
       } else {
-        await axios.post("/api/users", values);
+        await axios.post("/api/users", payload);
         message.success("User created");
       }
 
@@ -121,15 +132,14 @@ export default function AdminUsers() {
       key: "phone",
     },
     {
-      title: "Roles",
-      dataIndex: "roles",
-      key: "roles",
-      render: (roles: string[]) =>
-        roles.map((role) => (
-          <Tag color={role === "ROLE_ADMIN" ? "red" : "blue"} key={role}>
-            {role.replace("ROLE_", "")}
-          </Tag>
-        )),
+      title: "Role",
+      dataIndex: "role",
+      key: "role",
+      render: (role: string | undefined) => (
+        <Tag color={role === "ROLE_ADMIN" ? "red" : "blue"}>
+          {role ? role.replace("ROLE_", "") : "Unknown"}
+        </Tag>
+      ),
     },
     {
       title: "Actions",
@@ -214,16 +224,17 @@ export default function AdminUsers() {
           </Form.Item>
 
           <Form.Item
-            name="roles"
-            label="Roles"
-            rules={[{ required: true, message: "Select at least one role" }]}
+            name="role"
+            label="Role"
+            rules={[{ required: true, message: "Select a role" }]}
           >
             <Select
-              mode="multiple"
               options={[
                 { value: "ROLE_USER", label: "User" },
                 { value: "ROLE_ADMIN", label: "Admin" },
               ]}
+              placeholder="Select role"
+              style={{ width: "100%" }}
             />
           </Form.Item>
         </Form>

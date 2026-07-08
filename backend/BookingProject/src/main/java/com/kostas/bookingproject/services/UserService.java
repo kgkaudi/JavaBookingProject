@@ -15,33 +15,45 @@ public class UserService {
         this.users = users;
     }
 
+    // ---------------------------------------------------------
+    // GET ALL USERS
+    // ---------------------------------------------------------
     public List<User> getAllUsers() {
         return users.findAll();
     }
 
+    // ---------------------------------------------------------
+    // GET USER BY ID
+    // ---------------------------------------------------------
     public User getUserById(String id) {
         return users.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
     }
 
-    public User updateUser(String id, User updated, User currentUser) {
-        User existing = users.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+    // ---------------------------------------------------------
+    // UPDATE USER (INCLUDING ROLE)
+    // ---------------------------------------------------------
+    public User updateUser(String userId, User updatedUser) {
+        User existingUser = users.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
 
-        boolean isAdmin = currentUser.getRoles().contains("ROLE_ADMIN");
-        boolean isSelf = currentUser.getId().equals(id);
+        existingUser.setName(updatedUser.getName());
+        existingUser.setEmail(updatedUser.getEmail());
+        existingUser.setPhone(updatedUser.getPhone());
 
-        if (!isSelf && !isAdmin) {
-            throw new IllegalStateException("Not authorized to update this user");
+        // ✅ Handle single role or list
+        if (updatedUser.getRole() != null) {
+            existingUser.setRoles(List.of(updatedUser.getRole()));
+        } else if (updatedUser.getRoles() != null && !updatedUser.getRoles().isEmpty()) {
+            existingUser.setRoles(updatedUser.getRoles());
         }
 
-        existing.setName(updated.getName());
-        existing.setEmail(updated.getEmail());
-        existing.setPhone(updated.getPhone());
-
-        return users.save(existing);
+        return users.save(existingUser);
     }
 
+    // ---------------------------------------------------------
+    // DELETE USER
+    // ---------------------------------------------------------
     public void deleteUser(String id) {
         if (!users.existsById(id)) {
             throw new IllegalArgumentException("User not found");
@@ -49,6 +61,9 @@ public class UserService {
         users.deleteById(id);
     }
 
+    // ---------------------------------------------------------
+    // PROMOTE / DEMOTE
+    // ---------------------------------------------------------
     public User promoteToAdmin(String id) {
         User user = users.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));

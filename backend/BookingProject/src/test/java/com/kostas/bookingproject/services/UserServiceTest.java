@@ -24,7 +24,6 @@ class UserServiceTest {
         userRepository = mock(UserRepository.class);
         userService = new UserService(userRepository);
 
-        // MUST MATCH UserService.java EXACTLY
         user = new User("u1", "Kostas", "k@k.com", "ENC", "6900000000", List.of("ROLE_USER"));
         admin = new User("a1", "Admin", "admin@test.com", "ENC", "6900000000", List.of("ROLE_ADMIN"));
     }
@@ -68,56 +67,30 @@ class UserServiceTest {
     // ---------------------------------------------------------
 
     @Test
-    void updateUser_self_success() {
+    void updateUser_success() {
         User updated = new User();
         updated.setName("New Name");
         updated.setEmail("new@test.com");
         updated.setPhone("6999999999");
+        updated.setRole("ROLE_ADMIN");
 
         when(userRepository.findById("u1")).thenReturn(Optional.of(user));
-        when(userRepository.save(user)).thenReturn(user);
+        when(userRepository.save(any(User.class))).thenReturn(user);
 
-        User result = userService.updateUser("u1", updated, user);
+        User result = userService.updateUser("u1", updated);
 
         assertEquals("New Name", result.getName());
         assertEquals("new@test.com", result.getEmail());
         assertEquals("6999999999", result.getPhone());
-    }
-
-    @Test
-    void updateUser_admin_success() {
-        User updated = new User();
-        updated.setName("Updated");
-        updated.setEmail("updated@test.com");
-        updated.setPhone("6900000000");
-
-        when(userRepository.findById("u1")).thenReturn(Optional.of(user));
-        when(userRepository.save(user)).thenReturn(user);
-
-        User result = userService.updateUser("u1", updated, admin);
-
-        assertEquals("Updated", result.getName());
-    }
-
-    @Test
-    void updateUser_unauthorized() {
-        User updated = new User();
-        updated.setName("Hack");
-
-        User otherUser = new User("u2", "Other", "o@test.com", "ENC", "6900000000", List.of("ROLE_USER"));
-
-        when(userRepository.findById("u1")).thenReturn(Optional.of(user));
-
-        assertThrows(IllegalStateException.class,
-                () -> userService.updateUser("u1", updated, otherUser));
+        assertEquals(List.of("ROLE_ADMIN"), result.getRoles());
     }
 
     @Test
     void updateUser_notFound() {
         when(userRepository.findById("u1")).thenReturn(Optional.empty());
 
-        assertThrows(IllegalArgumentException.class,
-                () -> userService.updateUser("u1", new User(), user));
+        assertThrows(RuntimeException.class,
+                () -> userService.updateUser("u1", new User()));
     }
 
     // ---------------------------------------------------------
@@ -148,11 +121,11 @@ class UserServiceTest {
     @Test
     void promoteToAdmin_success() {
         when(userRepository.findById("u1")).thenReturn(Optional.of(user));
-        when(userRepository.save(user)).thenReturn(user);
+        when(userRepository.save(any(User.class))).thenReturn(user);
 
         User result = userService.promoteToAdmin("u1");
 
-        assertTrue(result.getRoles().contains("ROLE_ADMIN"));
+        assertEquals(List.of("ROLE_ADMIN"), result.getRoles());
     }
 
     @Test
@@ -168,11 +141,11 @@ class UserServiceTest {
         admin.setRoles(List.of("ROLE_ADMIN"));
 
         when(userRepository.findById("a1")).thenReturn(Optional.of(admin));
-        when(userRepository.save(admin)).thenReturn(admin);
+        when(userRepository.save(any(User.class))).thenReturn(admin);
 
         User result = userService.demoteToUser("a1");
 
-        assertTrue(result.getRoles().contains("ROLE_USER"));
+        assertEquals(List.of("ROLE_USER"), result.getRoles());
     }
 
     @Test

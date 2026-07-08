@@ -51,9 +51,9 @@ public class UserController {
     @PreAuthorize("#userId == authentication.principal.id or hasRole('ADMIN')")
     public User updateUser(
             @PathVariable String userId,
-            @RequestBody User updatedUser,
-            @AuthenticationPrincipal CustomUserDetails currentUser) {
-        return userService.updateUser(userId, updatedUser, currentUser.getUser());
+            @RequestBody User updatedUser) {
+
+        return userService.updateUser(userId, updatedUser);
     }
 
     // ---------------------------------------------------------
