@@ -16,6 +16,7 @@ import AdminPanel from "./pages/AdminPanel";
 import AdminUsers from "./pages/AdminUsers";
 import AdminRooms from "./pages/AdminRooms";
 import AdminBookings from "./pages/AdminBookings";
+import Home from "./pages/Home";
 
 export default function App({ setDarkMode, darkMode }) {
   return (
@@ -38,7 +39,7 @@ export default function App({ setDarkMode, darkMode }) {
           }
         >
           {/* User Routes */}
-          <Route path="/" element={<Rooms />} />
+          <Route path="/" element={<Home />} />
           <Route path="/rooms" element={<Rooms />} />
           <Route path="/rooms/:id" element={<RoomDetails />} />
           <Route path="/bookings" element={<Bookings />} />
