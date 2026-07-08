@@ -2,10 +2,10 @@ package com.kostas.bookingproject.controllers;
 
 import com.kostas.bookingproject.dto.BookingResponse;
 import com.kostas.bookingproject.models.Booking;
-import com.kostas.bookingproject.models.User;
 import com.kostas.bookingproject.services.BookingService;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -26,23 +26,28 @@ public class BookingController {
     // ---------------------------------------------------------
     @PostMapping
     public Booking createBooking(
-            @AuthenticationPrincipal User user,
+            @AuthenticationPrincipal UserDetails userDetails,
             @RequestParam String roomId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
-        return bookingService.createBooking(
-                user.getId(),
-                roomId,
-                startDate,
-                endDate);
+
+        return bookingService.createBooking(userDetails.getUsername(), roomId, startDate, endDate);
+    }
+
+    // ---------------------------------------------------------
+    // GET ALL BOOKINGS (ADMIN)
+    // ---------------------------------------------------------
+    @GetMapping
+    public List<BookingResponse> getAllBookings() {
+        return bookingService.getAllBookings();
     }
 
     // ---------------------------------------------------------
     // GET BOOKINGS FOR AUTHENTICATED USER
     // ---------------------------------------------------------
     @GetMapping("/me")
-    public List<BookingResponse> getMyBookings(@AuthenticationPrincipal User user) {
-        return bookingService.getBookingsForUser(user.getId());
+    public List<BookingResponse> getMyBookings(@AuthenticationPrincipal UserDetails userDetails) {
+        return bookingService.getBookingsForUser(userDetails.getUsername());
     }
 
     // ---------------------------------------------------------
@@ -54,11 +59,22 @@ public class BookingController {
     }
 
     // ---------------------------------------------------------
-    // GET BOOKINGS FOR ROOM
+    // GET BOOKINGS FOR ROOM (ADMIN)
     // ---------------------------------------------------------
     @GetMapping("/room/{roomId}")
     public List<Booking> getBookingsForRoom(@PathVariable String roomId) {
         return bookingService.getBookingsForRoom(roomId);
+    }
+
+    // ---------------------------------------------------------
+    // GET BOOKING BY ID (USER + ADMIN)
+    // ---------------------------------------------------------
+    @GetMapping("/{bookingId}")
+    public BookingResponse getBookingById(
+            @PathVariable String bookingId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+
+        return bookingService.getBookingById(bookingId, userDetails.getUsername());
     }
 
     // ---------------------------------------------------------
@@ -69,6 +85,7 @@ public class BookingController {
             @RequestParam String roomId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
+
         return bookingService.isRoomAvailable(roomId, startDate, endDate);
     }
 
@@ -78,7 +95,8 @@ public class BookingController {
     @DeleteMapping("/{bookingId}")
     public void cancelBooking(
             @PathVariable String bookingId,
-            @AuthenticationPrincipal User user) {
-        bookingService.cancelBooking(bookingId, user.getId());
+            @AuthenticationPrincipal UserDetails userDetails) {
+
+        bookingService.cancelBooking(bookingId, userDetails.getUsername());
     }
 }

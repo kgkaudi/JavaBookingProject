@@ -26,9 +26,6 @@ public class SecurityConfig {
         this.jwtFilter = jwtFilter;
     }
 
-    // ---------------------------------------------------------
-    // MAIN SECURITY FILTER CHAIN
-    // ---------------------------------------------------------
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
 
@@ -38,62 +35,93 @@ public class SecurityConfig {
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
                 .authorizeHttpRequests(auth -> auth
-                        // Public endpoints
+
+                        // ---------------------------------------------------------
+                        // PUBLIC ENDPOINTS
+                        // ---------------------------------------------------------
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/api/rooms/price/**").permitAll()
 
-                        // Allow authenticated users to update themselves
-                        .requestMatchers(HttpMethod.PUT, "/api/users/**").authenticated()
-                        .requestMatchers("/api/users/me/**").authenticated()
+                        // ---------------------------------------------------------
+                        // USER PROFILE (USER + ADMIN)
+                        // ---------------------------------------------------------
+                        .requestMatchers(HttpMethod.GET, "/api/users/me").hasAnyAuthority("ROLE_USER", "ROLE_ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/api/users/me").hasAnyAuthority("ROLE_USER", "ROLE_ADMIN")
 
-                        // Admin-only endpoints
-                        .requestMatchers(HttpMethod.GET, "/api/users/**").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.DELETE, "/api/users/**").hasRole("ADMIN")
-                        .requestMatchers("/api/rooms/**").hasRole("ADMIN")
+                        // ---------------------------------------------------------
+                        // ADMIN USER MANAGEMENT
+                        // ---------------------------------------------------------
+                        .requestMatchers(HttpMethod.GET, "/api/users/**").hasAuthority("ROLE_ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/api/users/**").hasAuthority("ROLE_ADMIN")
 
-                        // User endpoints
-                        .requestMatchers("/api/bookings/**").hasRole("USER")
+                        // ---------------------------------------------------------
+                        // ROOMS
+                        // ---------------------------------------------------------
+                        .requestMatchers(HttpMethod.GET, "/api/rooms/**").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/rooms/**").hasAuthority("ROLE_ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/api/rooms/**").hasAuthority("ROLE_ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/api/rooms/**").hasAuthority("ROLE_ADMIN")
 
-                        // Everything else requires authentication
-                        .anyRequest().authenticated())
+                        // ---------------------------------------------------------
+                        // BOOKINGS — ADMIN VIEW (GET ALL BOOKINGS)
+                        // ---------------------------------------------------------
+                        .requestMatchers(HttpMethod.GET, "/api/bookings").hasAuthority("ROLE_ADMIN")
 
-                // Add JWT filter BEFORE UsernamePasswordAuthenticationFilter
+                        // ---------------------------------------------------------
+                        // BOOKINGS — AVAILABILITY (USER + ADMIN)
+                        // ---------------------------------------------------------
+                        .requestMatchers(HttpMethod.GET, "/api/bookings/availability")
+                                .hasAnyAuthority("ROLE_USER", "ROLE_ADMIN")
+
+                        // ---------------------------------------------------------
+                        // BOOKINGS — USER'S OWN BOOKINGS (USER + ADMIN)
+                        // ---------------------------------------------------------
+                        .requestMatchers(HttpMethod.GET, "/api/bookings/me")
+                                .hasAnyAuthority("ROLE_USER", "ROLE_ADMIN")
+
+                        // ---------------------------------------------------------
+                        // BOOKINGS — VIEW BY ID (USER + ADMIN)
+                        // ---------------------------------------------------------
+                        .requestMatchers(HttpMethod.GET, "/api/bookings/*")
+                                .hasAnyAuthority("ROLE_USER", "ROLE_ADMIN")
+
+                        // ---------------------------------------------------------
+                        // BOOKINGS — ADMIN VIEW BY USER OR ROOM
+                        // ---------------------------------------------------------
+                        .requestMatchers(HttpMethod.GET, "/api/bookings/user/**").hasAuthority("ROLE_ADMIN")
+                        .requestMatchers(HttpMethod.GET, "/api/bookings/room/**").hasAuthority("ROLE_ADMIN")
+
+                        // ---------------------------------------------------------
+                        // BOOKINGS — USER ACTIONS (CREATE + CANCEL)
+                        // ---------------------------------------------------------
+                        .requestMatchers(HttpMethod.POST, "/api/bookings").hasAuthority("ROLE_USER")
+                        .requestMatchers(HttpMethod.DELETE, "/api/bookings/**").hasAuthority("ROLE_USER")
+
+                        // ---------------------------------------------------------
+                        // EVERYTHING ELSE
+                        // ---------------------------------------------------------
+                        .anyRequest().authenticated()
+                )
+
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
 
-    // ---------------------------------------------------------
-    // CORS CONFIGURATION
-    // ---------------------------------------------------------
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-
-        // Allow your frontend origin
         config.setAllowedOrigins(List.of("http://localhost:5173"));
-
-        // Allow all standard HTTP methods
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-
-        // Allow all headers (important for Authorization)
         config.setAllowedHeaders(List.of("*"));
-
-        // Expose headers so frontend can read them
         config.setExposedHeaders(List.of("Authorization", "Content-Type"));
-
-        // Allow credentials (cookies, tokens)
         config.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
-
         return source;
     }
 
-    // ---------------------------------------------------------
-    // AUTHENTICATION MANAGER
-    // ---------------------------------------------------------
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
         return config.getAuthenticationManager();
