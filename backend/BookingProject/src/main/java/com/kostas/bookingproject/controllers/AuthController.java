@@ -24,11 +24,11 @@ public class AuthController {
     // ---------------------------------------------------------
     // SIGNUP
     // ---------------------------------------------------------
-
     @PostMapping("/signup")
     public ResponseEntity<?> signup(@RequestBody SignupRequest request) {
         try {
-            return ResponseEntity.ok(authService.signup(request));
+            AuthResponse response = authService.signup(request);   // MUST generate email-based token
+            return ResponseEntity.ok(response);
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
@@ -37,11 +37,10 @@ public class AuthController {
     // ---------------------------------------------------------
     // LOGIN
     // ---------------------------------------------------------
-
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody AuthRequest request) {
         try {
-            AuthResponse response = authService.login(request);
+            AuthResponse response = authService.login(request);    // MUST generate email-based token
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());
@@ -51,7 +50,6 @@ public class AuthController {
     // ---------------------------------------------------------
     // LOGOUT (JWT BLACKLIST)
     // ---------------------------------------------------------
-
     @PostMapping("/logout")
     public ResponseEntity<?> logout(HttpServletRequest request) {
         String authHeader = request.getHeader("Authorization");

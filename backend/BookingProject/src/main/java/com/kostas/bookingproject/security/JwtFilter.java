@@ -2,7 +2,6 @@ package com.kostas.bookingproject.security;
 
 import com.kostas.bookingproject.models.User;
 import com.kostas.bookingproject.repositories.UserRepository;
-
 import io.jsonwebtoken.Claims;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -39,12 +38,10 @@ public class JwtFilter extends OncePerRequestFilter {
 
             try {
                 Claims claims = jwtUtil.validate(token);
+                String email = claims.getSubject();
 
-                String userId = claims.getSubject();
-
-                // Load full User entity from DB
-                User user = userRepository.findById(userId)
-                        .orElse(null);
+                // Load full User entity from DB by email
+                User user = userRepository.findByEmail(email).orElse(null);
 
                 if (user != null) {
                     CustomUserDetails userDetails = new CustomUserDetails(user);

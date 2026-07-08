@@ -36,70 +36,48 @@ public class SecurityConfig {
 
                 .authorizeHttpRequests(auth -> auth
 
-                        // ---------------------------------------------------------
-                        // PUBLIC ENDPOINTS
-                        // ---------------------------------------------------------
+                        // PUBLIC
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/api/rooms/price/**").permitAll()
 
-                        // ---------------------------------------------------------
-                        // USER PROFILE (USER + ADMIN)
-                        // ---------------------------------------------------------
+                        // USER PROFILE
                         .requestMatchers(HttpMethod.GET, "/api/users/me").hasAnyAuthority("ROLE_USER", "ROLE_ADMIN")
                         .requestMatchers(HttpMethod.PUT, "/api/users/me").hasAnyAuthority("ROLE_USER", "ROLE_ADMIN")
 
-                        // ---------------------------------------------------------
                         // ADMIN USER MANAGEMENT
-                        // ---------------------------------------------------------
                         .requestMatchers(HttpMethod.GET, "/api/users/**").hasAuthority("ROLE_ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/api/users/**").hasAuthority("ROLE_ADMIN")
 
-                        // ---------------------------------------------------------
                         // ROOMS
-                        // ---------------------------------------------------------
                         .requestMatchers(HttpMethod.GET, "/api/rooms/**").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/rooms/**").hasAuthority("ROLE_ADMIN")
                         .requestMatchers(HttpMethod.PUT, "/api/rooms/**").hasAuthority("ROLE_ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/api/rooms/**").hasAuthority("ROLE_ADMIN")
 
-                        // ---------------------------------------------------------
-                        // BOOKINGS — ADMIN VIEW (GET ALL BOOKINGS)
-                        // ---------------------------------------------------------
+                        // BOOKINGS — ADMIN LIST ALL
                         .requestMatchers(HttpMethod.GET, "/api/bookings").hasAuthority("ROLE_ADMIN")
 
-                        // ---------------------------------------------------------
-                        // BOOKINGS — AVAILABILITY (USER + ADMIN)
-                        // ---------------------------------------------------------
+                        // BOOKINGS — AVAILABILITY
                         .requestMatchers(HttpMethod.GET, "/api/bookings/availability")
                                 .hasAnyAuthority("ROLE_USER", "ROLE_ADMIN")
 
-                        // ---------------------------------------------------------
-                        // BOOKINGS — USER'S OWN BOOKINGS (USER + ADMIN)
-                        // ---------------------------------------------------------
+                        // BOOKINGS — USER'S OWN
                         .requestMatchers(HttpMethod.GET, "/api/bookings/me")
                                 .hasAnyAuthority("ROLE_USER", "ROLE_ADMIN")
 
-                        // ---------------------------------------------------------
-                        // BOOKINGS — VIEW BY ID (USER + ADMIN)
-                        // ---------------------------------------------------------
+                        // BOOKINGS — VIEW BY ID
                         .requestMatchers(HttpMethod.GET, "/api/bookings/*")
                                 .hasAnyAuthority("ROLE_USER", "ROLE_ADMIN")
 
-                        // ---------------------------------------------------------
                         // BOOKINGS — ADMIN VIEW BY USER OR ROOM
-                        // ---------------------------------------------------------
                         .requestMatchers(HttpMethod.GET, "/api/bookings/user/**").hasAuthority("ROLE_ADMIN")
                         .requestMatchers(HttpMethod.GET, "/api/bookings/room/**").hasAuthority("ROLE_ADMIN")
 
-                        // ---------------------------------------------------------
-                        // BOOKINGS — USER ACTIONS (CREATE + CANCEL)
-                        // ---------------------------------------------------------
-                        .requestMatchers(HttpMethod.POST, "/api/bookings").hasAuthority("ROLE_USER")
+                        // BOOKINGS — USER ACTIONS
+                        .requestMatchers(HttpMethod.POST, "/api/bookings").hasAnyAuthority("ROLE_USER", "ROLE_ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/api/bookings/**").hasAuthority("ROLE_USER")
 
-                        // ---------------------------------------------------------
                         // EVERYTHING ELSE
-                        // ---------------------------------------------------------
                         .anyRequest().authenticated()
                 )
 

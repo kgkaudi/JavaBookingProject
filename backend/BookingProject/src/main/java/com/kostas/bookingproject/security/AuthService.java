@@ -2,7 +2,6 @@ package com.kostas.bookingproject.security;
 
 import com.kostas.bookingproject.models.User;
 import com.kostas.bookingproject.repositories.UserRepository;
-import com.kostas.bookingproject.security.JwtUtil;
 
 import java.util.List;
 
@@ -27,7 +26,7 @@ public class AuthService {
     // ---------------------------------------------------------
     // SIGNUP
     // ---------------------------------------------------------
-    public User signup(SignupRequest request) {
+    public AuthResponse signup(SignupRequest request) {
 
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new IllegalStateException("Email already in use");
@@ -38,10 +37,13 @@ public class AuthService {
         user.setEmail(request.getEmail());
         user.setPhone(request.getPhone());
         user.setPassword(passwordEncoder.encode(request.getPassword()));
-
         user.setRoles(List.of("ROLE_USER"));
 
-        return userRepository.save(user);
+        User saved = userRepository.save(user);
+
+        String token = jwtUtil.generateToken(saved.getEmail(), saved.getRoles());
+
+        return new AuthResponse(token, saved.getRoles());
     }
 
     // ---------------------------------------------------------
@@ -56,7 +58,8 @@ public class AuthService {
             throw new IllegalArgumentException("Invalid credentials");
         }
 
-        String token = jwtUtil.generateToken(user.getId(), user.getRoles());
+        // ⭐ EMAIL-BASED TOKEN (FIXED)
+        String token = jwtUtil.generateToken(user.getEmail(), user.getRoles());
 
         return new AuthResponse(token, user.getRoles());
     }
