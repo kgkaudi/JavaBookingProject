@@ -11,14 +11,15 @@ import {
 } from "antd";
 import axios from "../api/axios";
 import dayjs from "dayjs";
+import { App } from "antd";
 
 interface Booking {
   id: string;
-  roomId: string;
+  roomNumber: number;
   userId: string;
   startDate: string;
   endDate: string;
-  status: string; // pending, confirmed, cancelled
+  status: string;
 }
 
 interface Room {
@@ -33,6 +34,7 @@ interface User {
 }
 
 export default function AdminBookings() {
+  const { modal } = App.useApp();
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [rooms, setRooms] = useState<Room[]>([]);
   const [users, setUsers] = useState<User[]>([]);
@@ -87,7 +89,7 @@ export default function AdminBookings() {
     setEditingBooking(booking);
 
     form.setFieldsValue({
-      roomId: booking.roomId,
+      roomId: rooms.find((r) => r.roomNumber === booking.roomNumber)?.id,
       userId: booking.userId,
       status: booking.status,
       dates: [dayjs(booking.startDate), dayjs(booking.endDate)],
@@ -107,8 +109,8 @@ export default function AdminBookings() {
         roomId: values.roomId,
         userId: values.userId,
         status: values.status,
-        startDate: values.dates[0].toISOString(),
-        endDate: values.dates[1].toISOString(),
+        startDate: values.dates[0].format("YYYY-MM-DD"),
+        endDate: values.dates[1].format("YYYY-MM-DD"),
       };
 
       await axios.put(`/api/bookings/${editingBooking!.id}`, payload);
@@ -139,7 +141,7 @@ export default function AdminBookings() {
   // DELETE BOOKING
   // ---------------------------------------------------------
   const deleteBooking = async (bookingId: string) => {
-    Modal.confirm({
+    modal.confirm({
       title: "Delete Booking",
       content: "Are you sure you want to delete this booking?",
       okText: "Delete",
@@ -162,12 +164,10 @@ export default function AdminBookings() {
   const columns = [
     {
       title: "Room",
-      dataIndex: "room",
-      key: "roomId",
-      render: (roomId: string) => {
-        const room = rooms.find((r) => r.id === roomId);
-        return room ? `Room ${room.roomNumber}` : roomId;
-      },
+      dataIndex: "roomNumber",
+      key: "roomNumber",
+      sorter: (a, b) => a.roomNumber - b.roomNumber,
+      render: (num: number) => `Room ${num}`,
     },
     {
       title: "User",

@@ -4,18 +4,23 @@ import java.time.LocalDate;
 
 public class BookingResponse {
     private String id;
-    private String room;
+    private int roomNumber;
     private String userId;
     private String status;
     private LocalDate startDate;
     private LocalDate endDate;
     private double totalPrice;
 
-    public BookingResponse(String id, String room, String userId,
-                           String status, LocalDate startDate,
-                           LocalDate endDate, double totalPrice) {
+    public BookingResponse(String id,
+            int roomNumber,
+            String userId,
+            String status,
+            LocalDate startDate,
+            LocalDate endDate,
+            double totalPrice) {
+
         this.id = id;
-        this.room = room;
+        this.roomNumber = roomNumber;
         this.userId = userId;
         this.status = status;
         this.startDate = startDate;
@@ -23,14 +28,37 @@ public class BookingResponse {
         this.totalPrice = totalPrice;
     }
 
-    // Getters and setters
-    public String getId() { return id; }
-    public String getRoom() { return room; }
-    public String getUserId() { return userId; }
-    public String getStatus() { return status; }
-    public LocalDate getStartDate() { return startDate; }
-    public LocalDate getEndDate() { return endDate; }
-    public double getTotalPrice() { return totalPrice; }
+    // Getters
+    public String getId() {
+        return id;
+    }
 
-    public void setRoom(String room) { this.room = room; }
+    public int getRoomNumber() {
+        return roomNumber;
+    } // ✅ FIXED
+
+    public String getUserId() {
+        return userId;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public LocalDate getStartDate() {
+        return startDate;
+    }
+
+    public LocalDate getEndDate() {
+        return endDate;
+    }
+
+    public double getTotalPrice() {
+        return totalPrice;
+    }
+
+    // Setter for roomNumber (optional)
+    public void setRoomNumber(int roomNumber) {
+        this.roomNumber = roomNumber;
+    }
 }

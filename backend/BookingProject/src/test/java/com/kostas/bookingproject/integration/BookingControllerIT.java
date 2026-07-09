@@ -37,8 +37,10 @@ class BookingControllerIT {
     @Autowired JwtUtil jwt;
     @Autowired ObjectMapper mapper;
 
-    String token;
+    String userToken;
+    String adminToken;
     User user;
+    User admin;
     Room room;
 
     @BeforeEach
@@ -56,7 +58,17 @@ class BookingControllerIT {
                 List.of("ROLE_USER")
         ));
 
-        token = "Bearer " + jwt.generateToken(user.getId(), List.of("ROLE_USER"));
+        admin = users.save(new User(
+                null,
+                "Admin",
+                "admin@k.com",
+                "ENC",
+                "6900000001",
+                List.of("ROLE_ADMIN")
+        ));
+
+        userToken = "Bearer " + jwt.generateToken(user.getId(), List.of("ROLE_USER"));
+        adminToken = "Bearer " + jwt.generateToken(admin.getId(), List.of("ROLE_ADMIN"));
 
         room = rooms.save(new Room(
                 null,
@@ -75,12 +87,13 @@ class BookingControllerIT {
     @Test
     void user_can_create_booking() throws Exception {
         mvc.perform(post("/api/bookings")
-                        .header("Authorization", token)
+                        .header("Authorization", userToken)
                         .param("roomId", room.getId())
                         .param("startDate", "2026-01-01")
                         .param("endDate", "2026-01-05"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").exists())
+                .andExpect(jsonPath("$.roomNumber").value(101))
                 .andExpect(jsonPath("$.totalPrice").value(200.0));
     }
 
@@ -96,12 +109,31 @@ class BookingControllerIT {
                 200.0
         ));
 
-        mvc.perform(post("/api/bookings/" + b.getId() + "/cancel")
-                        .header("Authorization", token))
+        mvc.perform(patch("/api/bookings/" + b.getId() + "/cancel")
+                        .header("Authorization", userToken))
                 .andExpect(status().isOk());
 
         Booking updated = bookings.findById(b.getId()).get();
         assert updated.getStatus().equals("cancelled");
+    }
+
+    @Test
+    void admin_can_delete_booking() throws Exception {
+        Booking b = bookings.save(new Booking(
+                null,
+                user.getId(),
+                room.getId(),
+                "confirmed",
+                LocalDate.parse("2026-01-01"),
+                LocalDate.parse("2026-01-05"),
+                200.0
+        ));
+
+        mvc.perform(delete("/api/bookings/" + b.getId())
+                        .header("Authorization", adminToken))
+                .andExpect(status().isOk());
+
+        assert bookings.findById(b.getId()).isEmpty();
     }
 
     // ------------------------------------------------------------
@@ -114,7 +146,7 @@ class BookingControllerIT {
         rooms.save(room);
 
         mvc.perform(post("/api/bookings")
-                        .header("Authorization", token)
+                        .header("Authorization", userToken)
                         .param("roomId", room.getId())
                         .param("startDate", "2026-01-01")
                         .param("endDate", "2026-01-05"))
@@ -134,7 +166,7 @@ class BookingControllerIT {
         ));
 
         mvc.perform(post("/api/bookings")
-                        .header("Authorization", token)
+                        .header("Authorization", userToken)
                         .param("roomId", room.getId())
                         .param("startDate", "2026-01-03")
                         .param("endDate", "2026-01-07"))
@@ -144,7 +176,7 @@ class BookingControllerIT {
     @Test
     void cannot_create_booking_if_start_after_end() throws Exception {
         mvc.perform(post("/api/bookings")
-                        .header("Authorization", token)
+                        .header("Authorization", userToken)
                         .param("roomId", room.getId())
                         .param("startDate", "2026-01-10")
                         .param("endDate", "2026-01-05"))
@@ -154,7 +186,7 @@ class BookingControllerIT {
     @Test
     void cannot_create_booking_if_start_equals_end() throws Exception {
         mvc.perform(post("/api/bookings")
-                        .header("Authorization", token)
+                        .header("Authorization", userToken)
                         .param("roomId", room.getId())
                         .param("startDate", "2026-01-05")
                         .param("endDate", "2026-01-05"))
@@ -168,7 +200,7 @@ class BookingControllerIT {
     @Test
     void cannot_create_booking_with_missing_roomId() throws Exception {
         mvc.perform(post("/api/bookings")
-                        .header("Authorization", token)
+                        .header("Authorization", userToken)
                         .param("startDate", "2026-01-01")
                         .param("endDate", "2026-01-05"))
                 .andExpect(status().isBadRequest());
@@ -177,7 +209,7 @@ class BookingControllerIT {
     @Test
     void cannot_create_booking_with_missing_dates() throws Exception {
         mvc.perform(post("/api/bookings")
-                        .header("Authorization", token)
+                        .header("Authorization", userToken)
                         .param("roomId", room.getId()))
                 .andExpect(status().isBadRequest());
     }
@@ -185,7 +217,7 @@ class BookingControllerIT {
     @Test
     void cannot_create_booking_with_malformed_json() throws Exception {
         mvc.perform(post("/api/bookings")
-                        .header("Authorization", token)
+                        .header("Authorization", userToken)
                         .contentType("application/json")
                         .content("{ roomId: 123, startDate: 'bad', endDate: 'bad' }"))
                 .andExpect(status().isBadRequest());
@@ -214,6 +246,23 @@ class BookingControllerIT {
                 .andExpect(status().isForbidden());
     }
 
+    @Test
+    void user_cannot_delete_booking() throws Exception {
+        Booking b = bookings.save(new Booking(
+                null,
+                user.getId(),
+                room.getId(),
+                "confirmed",
+                LocalDate.parse("2026-01-01"),
+                LocalDate.parse("2026-01-05"),
+                200.0
+        ));
+
+        mvc.perform(delete("/api/bookings/" + b.getId())
+                        .header("Authorization", userToken))
+                .andExpect(status().isForbidden());
+    }
+
     // ------------------------------------------------------------
     // EDGE CASES — REPOSITORY FAILURES
     // ------------------------------------------------------------
@@ -221,7 +270,7 @@ class BookingControllerIT {
     @Test
     void cannot_create_booking_if_room_does_not_exist() throws Exception {
         mvc.perform(post("/api/bookings")
-                        .header("Authorization", token)
+                        .header("Authorization", userToken)
                         .param("roomId", "nonexistent-room")
                         .param("startDate", "2026-01-01")
                         .param("endDate", "2026-01-05"))
@@ -233,7 +282,7 @@ class BookingControllerIT {
         users.deleteAll();
 
         mvc.perform(post("/api/bookings")
-                        .header("Authorization", token)
+                        .header("Authorization", userToken)
                         .param("roomId", room.getId())
                         .param("startDate", "2026-01-01")
                         .param("endDate", "2026-01-05"))

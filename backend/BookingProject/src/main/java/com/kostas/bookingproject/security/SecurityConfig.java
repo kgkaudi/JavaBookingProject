@@ -81,7 +81,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/bookings/room/**").hasAuthority("ROLE_ADMIN")
                 .requestMatchers(HttpMethod.POST, "/api/bookings")
                     .hasAnyAuthority("ROLE_USER", "ROLE_ADMIN")
-                .requestMatchers(HttpMethod.DELETE, "/api/bookings/**").hasAuthority("ROLE_USER")
+                .requestMatchers(HttpMethod.DELETE, "/api/bookings/**").hasAuthority("ROLE_ADMIN")
 
                 // EVERYTHING ELSE
                 .anyRequest().authenticated()

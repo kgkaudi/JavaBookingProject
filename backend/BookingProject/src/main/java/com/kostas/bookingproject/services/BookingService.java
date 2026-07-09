@@ -21,8 +21,8 @@ public class BookingService {
     private final UserRepository userRepository;
 
     public BookingService(BookingRepository bookingRepository,
-                          RoomRepository roomRepository,
-                          UserRepository userRepository) {
+            RoomRepository roomRepository,
+            UserRepository userRepository) {
         this.bookingRepository = bookingRepository;
         this.roomRepository = roomRepository;
         this.userRepository = userRepository;
@@ -32,22 +32,25 @@ public class BookingService {
     // RESPONSE DTO MAPPER
     // ---------------------------------------------------------
     public BookingResponse toResponse(Booking booking) {
+
+        Room room = roomRepository.findById(booking.getRoomId())
+                .orElseThrow(() -> new IllegalArgumentException("Room not found"));
+
         return new BookingResponse(
                 booking.getId(),
+                room.getRoomNumber(),
                 booking.getUserId(),
-                booking.getRoomId(),
                 booking.getStatus(),
                 booking.getStartDate(),
                 booking.getEndDate(),
-                booking.getTotalPrice()
-        );
+                booking.getTotalPrice());
     }
 
     // ---------------------------------------------------------
     // CREATE BOOKING
     // ---------------------------------------------------------
     public Booking createBooking(String email, String roomId,
-                                 LocalDate startDate, LocalDate endDate) {
+            LocalDate startDate, LocalDate endDate) {
 
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
@@ -63,7 +66,7 @@ public class BookingService {
 
         for (Booking b : existing) {
             boolean overlap = !(endDate.isBefore(b.getStartDate()) ||
-                                startDate.isAfter(b.getEndDate()));
+                    startDate.isAfter(b.getEndDate()));
             if (overlap) {
                 throw new IllegalStateException("Room already booked for these dates");
             }
@@ -81,6 +84,23 @@ public class BookingService {
         booking.setTotalPrice(totalPrice);
 
         return bookingRepository.save(booking);
+    }
+
+    // ---------------------------------------------------------
+    // DELETE BOOKING (ADMIN)
+    // ---------------------------------------------------------
+    public void deleteBooking(String bookingId, String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+
+        if (!user.getRoles().contains("ROLE_ADMIN")) {
+            throw new RuntimeException("Only admin can delete bookings");
+        }
+
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new IllegalArgumentException("Booking not found"));
+
+        bookingRepository.delete(booking);
     }
 
     // ---------------------------------------------------------
@@ -146,8 +166,9 @@ public class BookingService {
 
         for (Booking b : existing) {
             boolean overlap = !(endDate.isBefore(b.getStartDate()) ||
-                                startDate.isAfter(b.getEndDate()));
-            if (overlap) return false;
+                    startDate.isAfter(b.getEndDate()));
+            if (overlap)
+                return false;
         }
 
         return true;
@@ -157,8 +178,8 @@ public class BookingService {
     // UPDATE BOOKING (ADMIN)
     // ---------------------------------------------------------
     public BookingResponse updateBooking(String bookingId,
-                                         String email,
-                                         Booking updatedBooking) {
+            String email,
+            Booking updatedBooking) {
 
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));

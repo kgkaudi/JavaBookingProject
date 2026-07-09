@@ -49,6 +49,10 @@ class BookingServiceTest {
         room.setAvailable(true);
     }
 
+    // ---------------------------------------------------------
+    // CREATE BOOKING
+    // ---------------------------------------------------------
+
     @Test
     void createBooking_success() {
         when(users.findByEmail("k@k.com")).thenReturn(Optional.of(user));
@@ -127,6 +131,10 @@ class BookingServiceTest {
         );
     }
 
+    // ---------------------------------------------------------
+    // CANCEL BOOKING
+    // ---------------------------------------------------------
+
     @Test
     void user_can_cancel_own_booking() {
         Booking b = new Booking("b1", "u1", "r1", "confirmed",
@@ -169,6 +177,36 @@ class BookingServiceTest {
 
         assertThrows(RuntimeException.class, () ->
                 service.cancelBooking("b1", "k@k.com")
+        );
+    }
+
+    // ---------------------------------------------------------
+    // DELETE BOOKING
+    // ---------------------------------------------------------
+
+    @Test
+    void admin_can_delete_booking() {
+        Booking b = new Booking("b1", "u1", "r1", "confirmed",
+                LocalDate.parse("2026-01-01"), LocalDate.parse("2026-01-05"), 0);
+
+        when(users.findByEmail("admin@test.com")).thenReturn(Optional.of(admin));
+        when(bookings.findById("b1")).thenReturn(Optional.of(b));
+
+        service.deleteBooking("b1", "admin@test.com");
+
+        verify(bookings).delete(b);
+    }
+
+    @Test
+    void user_cannot_delete_booking() {
+        Booking b = new Booking("b1", "u1", "r1", "confirmed",
+                LocalDate.parse("2026-01-01"), LocalDate.parse("2026-01-05"), 0);
+
+        when(users.findByEmail("k@k.com")).thenReturn(Optional.of(user));
+        when(bookings.findById("b1")).thenReturn(Optional.of(b));
+
+        assertThrows(RuntimeException.class, () ->
+                service.deleteBooking("b1", "k@k.com")
         );
     }
 }

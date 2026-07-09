@@ -35,8 +35,7 @@ public class BookingController {
                 userDetails.getUsername(),
                 roomId,
                 startDate,
-                endDate
-        );
+                endDate);
 
         return bookingService.toResponse(booking);
     }
@@ -113,8 +112,18 @@ public class BookingController {
         return bookingService.updateBooking(
                 bookingId,
                 userDetails.getUsername(),
-                updatedBooking
-        );
+                updatedBooking);
+    }
+
+    // ---------------------------------------------------------
+    // DELETE BOOKING (ADMIN)
+    // ---------------------------------------------------------
+    @DeleteMapping("/{bookingId}")
+    public void deleteBooking(
+            @PathVariable String bookingId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+
+        bookingService.deleteBooking(bookingId, userDetails.getUsername());
     }
 
     // ---------------------------------------------------------

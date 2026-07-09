@@ -89,10 +89,11 @@ export default function Bookings() {
   const columns = [
     {
       title: "Room",
-      dataIndex: "room",
-      key: "roomName",
+      dataIndex: "roomNumber", // ✅ matches backend DTO
+      key: "roomNumber",
       responsive: ["xs", "sm", "md", "lg"],
-      sorter: (a, b) => a.roomName.localeCompare(b.roomName),
+      sorter: (a, b) => a.roomNumber - b.roomNumber,
+      render: (num) => `Room ${num}`,
     },
     {
       title: "From",
@@ -120,8 +121,8 @@ export default function Bookings() {
           status === "CONFIRMED"
             ? "green"
             : status === "PENDING"
-            ? "gold"
-            : "red";
+              ? "gold"
+              : "red";
         return <Tag color={color}>{status}</Tag>;
       },
     },
