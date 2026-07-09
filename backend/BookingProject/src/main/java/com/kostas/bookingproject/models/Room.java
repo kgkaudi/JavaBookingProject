@@ -17,11 +17,10 @@ public class Room {
 
     private int roomNumber;
     private String type;
+    private int capacity;
     private double price;
     private boolean available;
-    private int capacity;
 
-    // Backward‑compatible constructor
     public Room(String id, int roomNumber, String type, double price, boolean available) {
         this.id = id;
         this.roomNumber = roomNumber;
@@ -30,9 +29,5 @@ public class Room {
         this.available = available;
 
         this.capacity = 1;
-    }
-
-    public int getCapacity() {
-        return capacity == 0 ? 1 : capacity;
     }
 }

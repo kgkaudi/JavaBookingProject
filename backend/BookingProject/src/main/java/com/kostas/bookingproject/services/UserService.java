@@ -34,23 +34,28 @@ public class UserService {
     }
 
     // ---------------------------------------------------------
+    // GET USER BY EMAIL
+    // ---------------------------------------------------------
+    public User getUserByEmail(String email) {
+        return users.findByEmail(email)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+    }
+
+    // ---------------------------------------------------------
     // CREATE USER (ADMIN)
     // ---------------------------------------------------------
     public User createUser(User newUser) {
 
-        // Validate email uniqueness
         if (users.findByEmail(newUser.getEmail()).isPresent()) {
             throw new IllegalArgumentException("Email already exists");
         }
 
-        // Encode password or set default
         if (newUser.getPassword() == null || newUser.getPassword().isBlank()) {
             newUser.setPassword(passwordEncoder.encode("default123"));
         } else {
             newUser.setPassword(passwordEncoder.encode(newUser.getPassword()));
         }
 
-        // Ensure roles exist
         if (newUser.getRoles() == null || newUser.getRoles().isEmpty()) {
             newUser.setRoles(List.of("ROLE_USER"));
         }
@@ -63,13 +68,12 @@ public class UserService {
     // ---------------------------------------------------------
     public User updateUser(String userId, User updatedUser) {
         User existingUser = users.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
 
         existingUser.setName(updatedUser.getName());
         existingUser.setEmail(updatedUser.getEmail());
         existingUser.setPhone(updatedUser.getPhone());
 
-        // FIXED ROLE HANDLING
         if (updatedUser.getRoles() != null && !updatedUser.getRoles().isEmpty()) {
             existingUser.setRoles(updatedUser.getRoles());
         } else if (updatedUser.getRole() != null && !updatedUser.getRole().isBlank()) {

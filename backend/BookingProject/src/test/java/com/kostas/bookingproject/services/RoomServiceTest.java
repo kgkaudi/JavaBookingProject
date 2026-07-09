@@ -16,10 +16,20 @@ class RoomServiceTest {
     private RoomRepository roomRepository;
     private RoomService roomService;
 
+    Room existing;
+
     @BeforeEach
     void setup() {
         roomRepository = mock(RoomRepository.class);
         roomService = new RoomService(roomRepository);
+
+        existing = new Room();
+        existing.setId("r1");
+        existing.setRoomNumber(101);
+        existing.setType("single");
+        existing.setCapacity(2);
+        existing.setPrice(100);
+        existing.setAvailable(true);
     }
 
     // ---------------------------------------------------------
@@ -30,12 +40,16 @@ class RoomServiceTest {
     void createRoom_success() {
         Room room = new Room();
         room.setRoomNumber(101);
+        room.setCapacity(2);
+        room.setType("single");
+        room.setPrice(100);
 
         when(roomRepository.save(room)).thenReturn(room);
 
         Room result = roomService.createRoom(room);
 
         assertEquals(101, result.getRoomNumber());
+        assertEquals(2, result.getCapacity());
     }
 
     @Test
@@ -62,12 +76,10 @@ class RoomServiceTest {
 
     @Test
     void updateRoom_success() {
-        Room existing = new Room();
-        existing.setId("r1");
-
         Room updated = new Room();
         updated.setRoomNumber(202);
         updated.setType("double");
+        updated.setCapacity(4);
         updated.setPrice(150);
         updated.setAvailable(false);
 
@@ -78,6 +90,7 @@ class RoomServiceTest {
 
         assertEquals(202, result.getRoomNumber());
         assertEquals("double", result.getType());
+        assertEquals(4, result.getCapacity());
         assertEquals(150, result.getPrice());
         assertFalse(result.isAvailable());
     }
@@ -91,18 +104,39 @@ class RoomServiceTest {
     }
 
     // ---------------------------------------------------------
+    // DELETE ROOM
+    // ---------------------------------------------------------
+
+    @Test
+    void deleteRoom_success() {
+        when(roomRepository.existsById("r1")).thenReturn(true);
+
+        roomService.deleteRoom("r1");
+
+        verify(roomRepository).deleteById("r1");
+    }
+
+    @Test
+    void deleteRoom_notFound() {
+        when(roomRepository.existsById("r1")).thenReturn(false);
+
+        assertThrows(IllegalArgumentException.class,
+                () -> roomService.deleteRoom("r1"));
+    }
+
+    // ---------------------------------------------------------
     // GET ALL ROOMS
     // ---------------------------------------------------------
 
     @Test
     void getAllRooms_success() {
-        List<Room> rooms = List.of(new Room(), new Room());
+        List<Room> rooms = List.of(existing);
 
         when(roomRepository.findAll()).thenReturn(rooms);
 
         List<Room> result = roomService.getAllRooms();
 
-        assertEquals(2, result.size());
+        assertEquals(1, result.size());
     }
 
     // ---------------------------------------------------------
@@ -111,10 +145,7 @@ class RoomServiceTest {
 
     @Test
     void getRoomById_success() {
-        Room room = new Room();
-        room.setId("r1");
-
-        when(roomRepository.findById("r1")).thenReturn(Optional.of(room));
+        when(roomRepository.findById("r1")).thenReturn(Optional.of(existing));
 
         Room result = roomService.getRoomById("r1");
 
@@ -135,13 +166,12 @@ class RoomServiceTest {
 
     @Test
     void getRoomsByAvailability_success() {
-        List<Room> rooms = List.of(new Room(), new Room());
-
-        when(roomRepository.findByAvailable(true)).thenReturn(rooms);
+        when(roomRepository.findByAvailable(true)).thenReturn(List.of(existing));
 
         List<Room> result = roomService.getRoomsByAvailability(true);
 
-        assertEquals(2, result.size());
+        assertEquals(1, result.size());
+        assertTrue(result.get(0).isAvailable());
     }
 
     @Test
@@ -159,13 +189,12 @@ class RoomServiceTest {
 
     @Test
     void getRoomsByType_success() {
-        List<Room> rooms = List.of(new Room());
-
-        when(roomRepository.findByType("single")).thenReturn(rooms);
+        when(roomRepository.findByType("single")).thenReturn(List.of(existing));
 
         List<Room> result = roomService.getRoomsByType("single");
 
         assertEquals(1, result.size());
+        assertEquals("single", result.get(0).getType());
     }
 
     @Test
@@ -183,13 +212,12 @@ class RoomServiceTest {
 
     @Test
     void getRoomsByPriceRange_success() {
-        List<Room> rooms = List.of(new Room());
+        when(roomRepository.findByPriceBetween(50, 200)).thenReturn(List.of(existing));
 
-        when(roomRepository.findByPriceBetween(50, 100)).thenReturn(rooms);
-
-        List<Room> result = roomService.getRoomsByPriceRange(50, 100);
+        List<Room> result = roomService.getRoomsByPriceRange(50, 200);
 
         assertEquals(1, result.size());
+        assertEquals(100, result.get(0).getPrice());
     }
 
     @Test

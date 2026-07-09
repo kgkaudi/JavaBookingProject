@@ -7,6 +7,7 @@ import com.kostas.bookingproject.security.UserDetailsServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.core.userdetails.UserDetails;
 
 import java.util.List;
 import java.util.Optional;
@@ -25,33 +26,42 @@ class UserDetailsServiceImplTest {
         service = new UserDetailsServiceImpl(userRepository);
     }
 
+    // ---------------------------------------------------------
+    // LOAD USER SUCCESS
+    // ---------------------------------------------------------
     @Test
     void loadUser_success() {
         User user = new User();
+        user.setId("u1");
         user.setEmail("k@k.com");
         user.setPassword("ENC");
-        user.setRoles(List.of("ROLE_USER"));
+        user.setRoles(List.of("ROLE_USER", "ROLE_ADMIN"));
 
-        when(userRepository.findByEmail("k@k.com")).thenReturn(Optional.of(user));
+        when(userRepository.findByEmail("k@k.com"))
+                .thenReturn(Optional.of(user));
 
-        var details = service.loadUserByUsername("k@k.com");
+        UserDetails details = service.loadUserByUsername("k@k.com");
 
         assertEquals("k@k.com", details.getUsername());
         assertEquals("ENC", details.getPassword());
 
-        // ✔ Ensure authorities contain ROLE_USER
-        assertTrue(
-                details.getAuthorities().stream()
-                        .anyMatch(a -> a.getAuthority().equals("ROLE_USER"))
-        );
+        // Authorities must contain both roles
+        assertTrue(details.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_USER")));
+
+        assertTrue(details.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN")));
     }
 
+    // ---------------------------------------------------------
+    // LOAD USER NOT FOUND
+    // ---------------------------------------------------------
     @Test
     void loadUser_notFound() {
-        when(userRepository.findByEmail("missing@k.com")).thenReturn(Optional.empty());
+        when(userRepository.findByEmail("missing@test.com"))
+                .thenReturn(Optional.empty());
 
-        assertThrows(UsernameNotFoundException.class, () ->
-                service.loadUserByUsername("missing@k.com")
-        );
+        assertThrows(UsernameNotFoundException.class,
+                () -> service.loadUserByUsername("missing@test.com"));
     }
 }

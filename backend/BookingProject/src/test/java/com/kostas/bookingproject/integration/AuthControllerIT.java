@@ -13,6 +13,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.junit.jupiter.api.Assertions.*;
 
 import com.kostas.bookingproject.config.MockMvcConfig;
 import com.kostas.bookingproject.repositories.UserRepository;
@@ -54,7 +55,8 @@ class AuthControllerIT {
                         .contentType("application/json")
                         .content(mapper.writeValueAsString(req)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").exists());
+                .andExpect(jsonPath("$.id").exists())
+                .andExpect(jsonPath("$.email").value("k@k.com"));
     }
 
     @Test
@@ -68,7 +70,8 @@ class AuthControllerIT {
                         .content(mapper.writeValueAsString(req)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.token").exists())
-                .andExpect(jsonPath("$.roles").isArray());
+                .andExpect(jsonPath("$.roles").isArray())
+                .andExpect(jsonPath("$.roles[0]").value("ROLE_USER"));
     }
 
     @Test
@@ -90,8 +93,8 @@ class AuthControllerIT {
 
         var claims = jwt.validate(token);
 
-        assert ((List<?>) claims.get("roles")).contains("ROLE_USER");
-        assert claims.getSubject().equals(u.getId());
+        assertTrue(((List<?>) claims.get("roles")).contains("ROLE_USER"));
+        assertEquals(u.getId(), claims.getSubject());
     }
 
     // ------------------------------------------------------------
@@ -100,12 +103,7 @@ class AuthControllerIT {
 
     @Test
     void signup_missing_email() throws Exception {
-        SignupRequest req = new SignupRequest(
-                "Kostas",
-                null,
-                "123456",
-                "6900000000"
-        );
+        SignupRequest req = new SignupRequest("Kostas", null, "123456", "6900000000");
 
         mvc.perform(post("/api/auth/signup")
                         .contentType("application/json")
@@ -115,12 +113,27 @@ class AuthControllerIT {
 
     @Test
     void signup_missing_password() throws Exception {
-        SignupRequest req = new SignupRequest(
-                "Kostas",
-                "k@k.com",
-                null,
-                "6900000000"
-        );
+        SignupRequest req = new SignupRequest("Kostas", "k@k.com", null, "6900000000");
+
+        mvc.perform(post("/api/auth/signup")
+                        .contentType("application/json")
+                        .content(mapper.writeValueAsString(req)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void signup_missing_name() throws Exception {
+        SignupRequest req = new SignupRequest(null, "k@k.com", "123456", "6900000000");
+
+        mvc.perform(post("/api/auth/signup")
+                        .contentType("application/json")
+                        .content(mapper.writeValueAsString(req)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void signup_missing_phone() throws Exception {
+        SignupRequest req = new SignupRequest("Kostas", "k@k.com", "123456", null);
 
         mvc.perform(post("/api/auth/signup")
                         .contentType("application/json")
@@ -172,12 +185,7 @@ class AuthControllerIT {
     void signup_duplicate_email() throws Exception {
         users.save(new User(null, "Kostas", "k@k.com", "ENC", "6900000000", List.of("ROLE_USER")));
 
-        SignupRequest req = new SignupRequest(
-                "Kostas",
-                "k@k.com",
-                "123456",
-                "6900000000"
-        );
+        SignupRequest req = new SignupRequest("Kostas", "k@k.com", "123456", "6900000000");
 
         mvc.perform(post("/api/auth/signup")
                         .contentType("application/json")
@@ -207,6 +215,26 @@ class AuthControllerIT {
                 .andExpect(status().isBadRequest());
     }
 
+    @Test
+    void login_empty_email() throws Exception {
+        AuthRequest req = new AuthRequest("", "123");
+
+        mvc.perform(post("/api/auth/login")
+                        .contentType("application/json")
+                        .content(mapper.writeValueAsString(req)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void login_empty_password() throws Exception {
+        AuthRequest req = new AuthRequest("k@k.com", "");
+
+        mvc.perform(post("/api/auth/login")
+                        .contentType("application/json")
+                        .content(mapper.writeValueAsString(req)))
+                .andExpect(status().isBadRequest());
+    }
+
     // ------------------------------------------------------------
     // AUTHORIZATION EDGE CASES
     // ------------------------------------------------------------
@@ -214,14 +242,14 @@ class AuthControllerIT {
     @Test
     void protected_endpoint_requires_token() throws Exception {
         mvc.perform(get("/api/users/me"))
-                .andExpect(status().isUnauthorized()); // 401, not 403
+                .andExpect(status().isUnauthorized());
     }
 
     @Test
     void protected_endpoint_invalid_token() throws Exception {
         mvc.perform(get("/api/users/me")
                         .header("Authorization", "Bearer invalid"))
-                .andExpect(status().isForbidden()); // invalid token → 403
+                .andExpect(status().isForbidden());
     }
 
     @Test
@@ -233,6 +261,18 @@ class AuthControllerIT {
                         .header("Authorization", token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.email").value("k@k.com"));
+    }
+
+    @Test
+    void protected_endpoint_expired_token() throws Exception {
+        User u = users.save(new User(null, "Kostas", "k@k.com", "ENC", "6900000000", List.of("ROLE_USER")));
+
+        // manually craft expired token
+        String expired = "Bearer " + jwt.generateToken(u.getId(), List.of("ROLE_USER"));
+
+        mvc.perform(get("/api/users/me")
+                        .header("Authorization", expired))
+                .andExpect(status().isForbidden());
     }
 
     // ------------------------------------------------------------

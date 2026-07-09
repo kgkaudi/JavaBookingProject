@@ -5,8 +5,10 @@ import com.kostas.bookingproject.config.MockMvcConfig;
 import com.kostas.bookingproject.controllers.UserController;
 import com.kostas.bookingproject.models.User;
 import com.kostas.bookingproject.services.UserService;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
@@ -39,9 +41,9 @@ class UserControllerIT {
         admin = new User("a1", "Admin", "admin@test.com", "ENC", "6900000000", List.of("ROLE_ADMIN"));
     }
 
-    // ---------------------------------------------------------
+    // ------------------------------------------------------------
     // GET ALL USERS (ADMIN)
-    // ---------------------------------------------------------
+    // ------------------------------------------------------------
 
     @Test
     @WithMockUser(roles = "ADMIN")
@@ -53,9 +55,16 @@ class UserControllerIT {
                 .andExpect(jsonPath("$.length()").value(2));
     }
 
-    // ---------------------------------------------------------
+    @Test
+    @WithMockUser(roles = "USER")
+    void getAllUsers_forbidden_for_non_admin() throws Exception {
+        mvc.perform(get("/api/users"))
+                .andExpect(status().isForbidden());
+    }
+
+    // ------------------------------------------------------------
     // GET USER BY ID
-    // ---------------------------------------------------------
+    // ------------------------------------------------------------
 
     @Test
     @WithMockUser(roles = "ADMIN")
@@ -74,12 +83,19 @@ class UserControllerIT {
                 .thenThrow(new IllegalArgumentException("User not found"));
 
         mvc.perform(get("/api/users/u1"))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isNotFound());
     }
 
-    // ---------------------------------------------------------
+    @Test
+    @WithMockUser(roles = "USER")
+    void getUserById_forbidden_for_non_admin() throws Exception {
+        mvc.perform(get("/api/users/u1"))
+                .andExpect(status().isForbidden());
+    }
+
+    // ------------------------------------------------------------
     // UPDATE USER (ADMIN)
-    // ---------------------------------------------------------
+    // ------------------------------------------------------------
 
     @Test
     @WithMockUser(roles = "ADMIN")
@@ -104,12 +120,30 @@ class UserControllerIT {
         mvc.perform(put("/api/users/u1")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(mapper.writeValueAsString(user)))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void updateUser_invalid_payload() throws Exception {
+        mvc.perform(put("/api/users/u1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{ name: 123 }"))
                 .andExpect(status().isBadRequest());
     }
 
-    // ---------------------------------------------------------
-    // DELETE USER
-    // ---------------------------------------------------------
+    @Test
+    @WithMockUser(roles = "USER")
+    void updateUser_forbidden_for_non_admin() throws Exception {
+        mvc.perform(put("/api/users/u1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(user)))
+                .andExpect(status().isForbidden());
+    }
+
+    // ------------------------------------------------------------
+    // DELETE USER (ADMIN)
+    // ------------------------------------------------------------
 
     @Test
     @WithMockUser(roles = "ADMIN")
@@ -127,12 +161,19 @@ class UserControllerIT {
                 .when(userService).deleteUser("u1");
 
         mvc.perform(delete("/api/users/u1"))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isNotFound());
     }
 
-    // ---------------------------------------------------------
-    // PROMOTE USER
-    // ---------------------------------------------------------
+    @Test
+    @WithMockUser(roles = "USER")
+    void deleteUser_forbidden_for_non_admin() throws Exception {
+        mvc.perform(delete("/api/users/u1"))
+                .andExpect(status().isForbidden());
+    }
+
+    // ------------------------------------------------------------
+    // PROMOTE USER (ADMIN)
+    // ------------------------------------------------------------
 
     @Test
     @WithMockUser(roles = "ADMIN")
@@ -153,12 +194,19 @@ class UserControllerIT {
                 .thenThrow(new IllegalArgumentException("User not found"));
 
         mvc.perform(put("/api/users/u1/promote"))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isNotFound());
     }
 
-    // ---------------------------------------------------------
-    // DEMOTE USER
-    // ---------------------------------------------------------
+    @Test
+    @WithMockUser(roles = "USER")
+    void promoteUser_forbidden_for_non_admin() throws Exception {
+        mvc.perform(put("/api/users/u1/promote"))
+                .andExpect(status().isForbidden());
+    }
+
+    // ------------------------------------------------------------
+    // DEMOTE USER (ADMIN)
+    // ------------------------------------------------------------
 
     @Test
     @WithMockUser(roles = "ADMIN")
@@ -179,6 +227,50 @@ class UserControllerIT {
                 .thenThrow(new IllegalArgumentException("User not found"));
 
         mvc.perform(put("/api/users/u1/demote"))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @WithMockUser(roles = "USER")
+    void demoteUser_forbidden_for_non_admin() throws Exception {
+        mvc.perform(put("/api/users/u1/demote"))
+                .andExpect(status().isForbidden());
+    }
+
+    // ------------------------------------------------------------
+    // GET AUTHENTICATED USER (/me)
+    // ------------------------------------------------------------
+
+    @Test
+    @WithMockUser(username = "k@k.com", roles = "USER")
+    void getAuthenticatedUser_success() throws Exception {
+        when(userService.getUserByEmail("k@k.com")).thenReturn(user);
+
+        mvc.perform(get("/api/users/me"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.email").value("k@k.com"));
+    }
+
+    @Test
+    @WithMockUser(username = "missing@test.com", roles = "USER")
+    void getAuthenticatedUser_notFound() throws Exception {
+        when(userService.getUserByEmail("missing@test.com"))
+                .thenThrow(new IllegalArgumentException("User not found"));
+
+        mvc.perform(get("/api/users/me"))
+                .andExpect(status().isNotFound());
+    }
+
+    // ------------------------------------------------------------
+    // MALFORMED JSON IN UPDATE
+    // ------------------------------------------------------------
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void updateUser_malformedJson() throws Exception {
+        mvc.perform(put("/api/users/u1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{ bad json }"))
                 .andExpect(status().isBadRequest());
     }
 }

@@ -34,8 +34,9 @@ class AuthServiceTest {
     }
 
     // ---------------------------------------------------------
-    // SIGNUP TEST
+    // SIGNUP TESTS
     // ---------------------------------------------------------
+
     @Test
     void signup_success() {
         SignupRequest req = new SignupRequest("Kostas", "k@k.com", "123", "6900000000");
@@ -72,9 +73,56 @@ class AuthServiceTest {
         );
     }
 
+    @Test
+    void signup_blankPassword_assignDefault() {
+        SignupRequest req = new SignupRequest("Kostas", "new@test.com", "", "6900000000");
+
+        when(userRepository.existsByEmail("new@test.com")).thenReturn(false);
+        when(passwordEncoder.encode("default123")).thenReturn("DEFAULT_ENC");
+
+        User saved = new User();
+        saved.setId("u1");
+        saved.setEmail("new@test.com");
+        saved.setPassword("DEFAULT_ENC");
+        saved.setRoles(List.of("ROLE_USER"));
+
+        when(userRepository.save(any())).thenReturn(saved);
+        when(jwtUtil.generateToken("new@test.com", List.of("ROLE_USER")))
+                .thenReturn("jwt-token");
+
+        AuthResponse response = authService.signup(req);
+
+        assertEquals("jwt-token", response.getToken());
+        assertEquals("DEFAULT_ENC", saved.getPassword());
+    }
+
+    @Test
+    void signup_nullEmail_allowed() {
+        SignupRequest req = new SignupRequest("Kostas", null, "123", "6900000000");
+
+        when(userRepository.existsByEmail(null)).thenReturn(false);
+        when(passwordEncoder.encode("123")).thenReturn("ENC");
+
+        User saved = new User();
+        saved.setId("u1");
+        saved.setEmail(null);
+        saved.setPassword("ENC");
+        saved.setRoles(List.of("ROLE_USER"));
+
+        when(userRepository.save(any())).thenReturn(saved);
+        when(jwtUtil.generateToken(null, List.of("ROLE_USER")))
+                .thenReturn("jwt-token");
+
+        AuthResponse response = authService.signup(req);
+
+        assertEquals("jwt-token", response.getToken());
+        assertEquals(List.of("ROLE_USER"), response.getRoles());
+    }
+
     // ---------------------------------------------------------
-    // LOGIN TEST
+    // LOGIN TESTS
     // ---------------------------------------------------------
+
     @Test
     void login_success() {
         AuthRequest req = new AuthRequest("k@k.com", "123");
@@ -107,6 +155,17 @@ class AuthServiceTest {
 
         when(userRepository.findByEmail("k@k.com")).thenReturn(Optional.of(user));
         when(passwordEncoder.matches("wrong", "ENC")).thenReturn(false);
+
+        assertThrows(IllegalArgumentException.class, () ->
+                authService.login(req)
+        );
+    }
+
+    @Test
+    void login_userNotFound() {
+        AuthRequest req = new AuthRequest("missing@test.com", "123");
+
+        when(userRepository.findByEmail("missing@test.com")).thenReturn(Optional.empty());
 
         assertThrows(IllegalArgumentException.class, () ->
                 authService.login(req)

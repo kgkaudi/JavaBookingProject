@@ -13,6 +13,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.junit.jupiter.api.Assertions.*;
 
 import com.kostas.bookingproject.config.MockMvcConfig;
 import com.kostas.bookingproject.repositories.UserRepository;
@@ -37,6 +38,9 @@ class AuthDeepIT {
         users.deleteAll();
     }
 
+    // ------------------------------------------------------------
+    // FULL AUTH FLOW
+    // ------------------------------------------------------------
     @Test
     void signup_then_login_then_access_protected_endpoint() throws Exception {
 
@@ -64,8 +68,7 @@ class AuthDeepIT {
         String token = mapper.readTree(tokenJson).get("token").asText();
         var claims = jwt.validate(token);
 
-        // ✔ Correct role assertion
-        assert ((List<?>) claims.get("roles")).contains("ROLE_USER");
+        assertTrue(((List<?>) claims.get("roles")).contains("ROLE_USER"));
 
         // 3) ACCESS PROTECTED ENDPOINT
         mvc.perform(get("/api/users/me")
@@ -74,6 +77,9 @@ class AuthDeepIT {
                 .andExpect(jsonPath("$.email").value("k@k.com"));
     }
 
+    // ------------------------------------------------------------
+    // WRONG PASSWORD
+    // ------------------------------------------------------------
     @Test
     void login_wrong_password() throws Exception {
         users.save(new User(null, "Kostas", "k@k.com", "ENC", "6900000000", List.of("ROLE_USER")));
@@ -86,6 +92,9 @@ class AuthDeepIT {
                 .andExpect(status().isBadRequest());
     }
 
+    // ------------------------------------------------------------
+    // DUPLICATE EMAIL
+    // ------------------------------------------------------------
     @Test
     void signup_duplicate_email() throws Exception {
         users.save(new User(null, "Kostas", "k@k.com", "ENC", "6900000000", List.of("ROLE_USER")));
@@ -98,11 +107,91 @@ class AuthDeepIT {
                 .andExpect(status().isBadRequest());
     }
 
+    // ------------------------------------------------------------
+    // MALFORMED JSON
+    // ------------------------------------------------------------
     @Test
     void login_malformed_json() throws Exception {
         mvc.perform(post("/api/auth/login")
                         .contentType("application/json")
                         .content("{ email: 'missingQuotes', password: 123 }"))
                 .andExpect(status().isBadRequest());
+    }
+
+    // ------------------------------------------------------------
+    // EXPIRED TOKEN
+    // ------------------------------------------------------------
+    @Test
+    void expired_token_denied() throws Exception {
+        User u = users.save(new User(null, "Kostas", "k@k.com", "ENC", "6900000000", List.of("ROLE_USER")));
+
+        String expired = "Bearer " + jwt.generateToken(u.getId(), List.of("ROLE_USER"));
+
+        mvc.perform(get("/api/users/me")
+                        .header("Authorization", expired))
+                .andExpect(status().isForbidden());
+    }
+
+    // ------------------------------------------------------------
+    // INVALID SIGNATURE TOKEN
+    // ------------------------------------------------------------
+    @Test
+    void invalid_signature_token_denied() throws Exception {
+        User u = users.save(new User(null, "Kostas", "k@k.com", "ENC", "6900000000", List.of("ROLE_USER")));
+
+        String valid = jwt.generateToken(u.getId(), List.of("ROLE_USER"));
+        String tampered = valid.substring(0, valid.length() - 10) + "AAAAAA";
+
+        mvc.perform(get("/api/users/me")
+                        .header("Authorization", "Bearer " + tampered))
+                .andExpect(status().isForbidden());
+    }
+
+    // ------------------------------------------------------------
+    // TOKEN WITH MISSING CLAIMS
+    // ------------------------------------------------------------
+    @Test
+    void token_missing_roles_claim_denied() throws Exception {
+        User u = users.save(new User(null, "Kostas", "k@k.com", "ENC", "6900000000", List.of("ROLE_USER")));
+
+        // Create token without roles
+        String token = jwt.generateTokenWithoutRoles(u.getId());
+
+        mvc.perform(get("/api/users/me")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isForbidden());
+    }
+
+    // ------------------------------------------------------------
+    // TOKEN WITH WRONG ROLES
+    // ------------------------------------------------------------
+    @Test
+    void token_with_wrong_roles_denied() throws Exception {
+        User u = users.save(new User(null, "Kostas", "k@k.com", "ENC", "6900000000", List.of("ROLE_USER")));
+
+        String token = "Bearer " + jwt.generateToken(u.getId(), List.of("ROLE_ADMIN"));
+
+        mvc.perform(get("/api/users/me")
+                        .header("Authorization", token))
+                .andExpect(status().isForbidden());
+    }
+
+    // ------------------------------------------------------------
+    // TOKEN TAMPERING (PAYLOAD)
+    // ------------------------------------------------------------
+    @Test
+    void token_payload_tampered_denied() throws Exception {
+        User u = users.save(new User(null, "Kostas", "k@k.com", "ENC", "6900000000", List.of("ROLE_USER")));
+
+        String token = jwt.generateToken(u.getId(), List.of("ROLE_USER"));
+
+        // Tamper payload
+        String[] parts = token.split("\\.");
+        String tamperedPayload = parts[1].substring(0, parts[1].length() - 5) + "AAAAA";
+        String tampered = parts[0] + "." + tamperedPayload + "." + parts[2];
+
+        mvc.perform(get("/api/users/me")
+                        .header("Authorization", "Bearer " + tampered))
+                .andExpect(status().isForbidden());
     }
 }

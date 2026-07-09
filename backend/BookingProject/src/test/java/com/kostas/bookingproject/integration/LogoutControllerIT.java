@@ -38,6 +38,8 @@ class LogoutControllerIT {
     void logout_success() throws Exception {
         String token = "Bearer faketoken123";
 
+        when(tokenBlacklist.isBlacklisted("faketoken123")).thenReturn(false);
+
         mvc.perform(post("/api/auth/logout")
                         .header("Authorization", token))
                 .andExpect(status().isOk())
@@ -71,6 +73,24 @@ class LogoutControllerIT {
 
         mvc.perform(post("/api/auth/logout")
                         .header("Authorization", "Bearer faketoken123"))
-                .andExpect(status().isUnauthorized());
+                .andExpect(status().isUnauthorized())
+                .andExpect(content().string("Token already blacklisted"));
+
+        verify(tokenBlacklist, never()).blacklist(anyString());
+    }
+
+    // ---------------------------------------------------------
+    // MALFORMED AUTH HEADER
+    // ---------------------------------------------------------
+
+    @Test
+    @WithMockUser(roles = "USER")
+    void logout_malformed_header() throws Exception {
+        mvc.perform(post("/api/auth/logout")
+                        .header("Authorization", "NotBearer faketoken123"))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().string("Invalid Authorization header"));
+
+        verifyNoInteractions(tokenBlacklist);
     }
 }

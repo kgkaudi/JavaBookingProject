@@ -18,19 +18,50 @@ public class JwtUtil {
     private static final long EXPIRATION = 1000 * 60 * 60 * 24; // 24h
 
     // ---------------------------------------------------------
-    // GENERATE TOKEN (EMAIL-BASED)
+    // GENERATE TOKEN (USER-ID BASED)
     // ---------------------------------------------------------
-    public String generateToken(String email, List<String> roles) {
+    public String generateToken(String userId, List<String> roles) {
 
         List<String> springRoles = roles.stream()
                 .map(r -> r.startsWith("ROLE_") ? r : "ROLE_" + r)
                 .toList();
 
         return Jwts.builder()
-                .setSubject(email) // email is the JWT subject
+                .setSubject(userId) // userId is the JWT subject
                 .claim("roles", springRoles)
                 .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + EXPIRATION))
+                .signWith(key, SignatureAlgorithm.HS256)
+                .compact();
+    }
+
+    // ---------------------------------------------------------
+    // GENERATE EXPIRED TOKEN (FOR TESTING)
+    // ---------------------------------------------------------
+    public String generateExpiredToken(String userId, List<String> roles) {
+        Date now = new Date();
+        Date expired = new Date(now.getTime() - 1000); // expired 1 second ago
+
+        return Jwts.builder()
+                .setSubject(userId)
+                .claim("roles", roles)
+                .setIssuedAt(now)
+                .setExpiration(expired)
+                .signWith(key, SignatureAlgorithm.HS256)
+                .compact();
+    }
+
+    // ---------------------------------------------------------
+    // GENERATE TOKEN WITHOUT ROLES (FOR TESTING)
+    // ---------------------------------------------------------
+    public String generateTokenWithoutRoles(String userId) {
+        Date now = new Date();
+        Date expiry = new Date(now.getTime() + EXPIRATION);
+
+        return Jwts.builder()
+                .setSubject(userId)
+                .setIssuedAt(now)
+                .setExpiration(expiry)
                 .signWith(key, SignatureAlgorithm.HS256)
                 .compact();
     }
@@ -47,9 +78,9 @@ public class JwtUtil {
     }
 
     // ---------------------------------------------------------
-    // EXTRACT EMAIL
+    // EXTRACT USER ID
     // ---------------------------------------------------------
-    public String getEmail(String token) {
+    public String getUserId(String token) {
         return validate(token).getSubject();
     }
 

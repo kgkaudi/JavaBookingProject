@@ -15,7 +15,6 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
-
 @Component
 public class DatabaseSeeder implements ApplicationRunner {
 
@@ -28,8 +27,7 @@ public class DatabaseSeeder implements ApplicationRunner {
             UserRepository userRepository,
             RoomRepository roomRepository,
             BookingRepository bookingRepository,
-            PasswordEncoderService passwordEncoder
-    ) {
+            PasswordEncoderService passwordEncoder) {
         this.userRepository = userRepository;
         this.roomRepository = roomRepository;
         this.bookingRepository = bookingRepository;
@@ -39,7 +37,7 @@ public class DatabaseSeeder implements ApplicationRunner {
     @Override
     public void run(ApplicationArguments args) {
 
-        System.out.println("🔄 Running Database Seeder...");
+        System.out.println("Running Database Seeder...");
 
         // ---------------------------------------------------
         // 1. ADMIN USER
@@ -81,9 +79,9 @@ public class DatabaseSeeder implements ApplicationRunner {
         // 3. ROOMS
         // ---------------------------------------------------
         if (roomRepository.count() == 0) {
-            Room r1 = new Room(null, 101, "single", 50, true, 1);
-            Room r2 = new Room(null, 102, "double", 80, true, 2);
-            Room r3 = new Room(null, 201, "suite", 120, true, 4);
+            Room r1 = new Room(null, 101, "single", 1, 50.0, true);
+            Room r2 = new Room(null, 102, "double", 2, 80.0, true);
+            Room r3 = new Room(null, 201, "suite", 4, 120.0, true);
 
             roomRepository.save(r1);
             roomRepository.save(r2);
@@ -114,6 +112,6 @@ public class DatabaseSeeder implements ApplicationRunner {
             }
         }
 
-        System.out.println("🎉 Database seeding completed");
+        System.out.println("Database seeding completed");
     }
 }

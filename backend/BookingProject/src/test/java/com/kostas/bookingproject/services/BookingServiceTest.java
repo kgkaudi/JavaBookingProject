@@ -26,6 +26,7 @@ class BookingServiceTest {
     UserRepository users;
 
     User user;
+    User admin;
     Room room;
 
     @BeforeEach
@@ -37,77 +38,99 @@ class BookingServiceTest {
         service = new BookingService(bookings, rooms, users);
 
         user = new User("u1", "Kostas", "k@k.com", "ENC", "6900000000", List.of("ROLE_USER"));
-        room = new Room("r1", 101, "single", 50, true);
+        admin = new User("a1", "Admin", "admin@test.com", "ENC", "6900000000", List.of("ROLE_ADMIN"));
+
+        room = new Room();
+        room.setId("r1");
+        room.setRoomNumber(101);
+        room.setType("single");
+        room.setCapacity(2);
+        room.setPrice(50);
+        room.setAvailable(true);
     }
 
     @Test
-    void create_booking_success() {
+    void createBooking_success() {
         when(users.findByEmail("k@k.com")).thenReturn(Optional.of(user));
         when(rooms.findById("r1")).thenReturn(Optional.of(room));
         when(bookings.findByRoomId("r1")).thenReturn(List.of());
 
-        Booking saved = new Booking(
-                "b1",
-                "u1",
-                "r1",
-                "confirmed",
-                LocalDate.parse("2026-01-01"),
-                LocalDate.parse("2026-01-05"),
-                0.0
-        );
+        Booking saved = new Booking("b1", "u1", "r1", "confirmed",
+                LocalDate.parse("2026-01-01"), LocalDate.parse("2026-01-05"), 200);
 
         when(bookings.save(any())).thenReturn(saved);
 
-        Booking b = service.createBooking(
-                "k@k.com",
-                "r1",
-                LocalDate.parse("2026-01-01"),
-                LocalDate.parse("2026-01-05")
-        );
+        Booking b = service.createBooking("k@k.com", "r1",
+                LocalDate.parse("2026-01-01"), LocalDate.parse("2026-01-05"));
 
-        assertNotNull(b);
         assertEquals("u1", b.getUserId());
         assertEquals("r1", b.getRoomId());
+        assertEquals(200, b.getTotalPrice());
     }
 
     @Test
-    void overlapping_booking_throws() {
+    void createBooking_userNotFound() {
+        when(users.findByEmail("missing@test.com")).thenReturn(Optional.empty());
+
+        assertThrows(IllegalArgumentException.class, () ->
+                service.createBooking("missing@test.com", "r1",
+                        LocalDate.parse("2026-01-01"), LocalDate.parse("2026-01-05"))
+        );
+    }
+
+    @Test
+    void createBooking_roomNotFound() {
+        when(users.findByEmail("k@k.com")).thenReturn(Optional.of(user));
+        when(rooms.findById("missing")).thenReturn(Optional.empty());
+
+        assertThrows(IllegalArgumentException.class, () ->
+                service.createBooking("k@k.com", "missing",
+                        LocalDate.parse("2026-01-01"), LocalDate.parse("2026-01-05"))
+        );
+    }
+
+    @Test
+    void createBooking_invalidDates_reversed() {
         when(users.findByEmail("k@k.com")).thenReturn(Optional.of(user));
         when(rooms.findById("r1")).thenReturn(Optional.of(room));
 
-        Booking existing = new Booking(
-                "b1",
-                "u1",
-                "r1",
-                "confirmed",
-                LocalDate.parse("2026-01-01"),
-                LocalDate.parse("2026-01-05"),
-                0.0
+        assertThrows(IllegalArgumentException.class, () ->
+                service.createBooking("k@k.com", "r1",
+                        LocalDate.parse("2026-01-05"), LocalDate.parse("2026-01-01"))
         );
+    }
+
+    @Test
+    void createBooking_invalidDates_sameDay() {
+        when(users.findByEmail("k@k.com")).thenReturn(Optional.of(user));
+        when(rooms.findById("r1")).thenReturn(Optional.of(room));
+
+        assertThrows(IllegalArgumentException.class, () ->
+                service.createBooking("k@k.com", "r1",
+                        LocalDate.parse("2026-01-01"), LocalDate.parse("2026-01-01"))
+        );
+    }
+
+    @Test
+    void createBooking_overlappingDates_throws() {
+        when(users.findByEmail("k@k.com")).thenReturn(Optional.of(user));
+        when(rooms.findById("r1")).thenReturn(Optional.of(room));
+
+        Booking existing = new Booking("b1", "u1", "r1", "confirmed",
+                LocalDate.parse("2026-01-01"), LocalDate.parse("2026-01-05"), 0);
 
         when(bookings.findByRoomId("r1")).thenReturn(List.of(existing));
 
         assertThrows(IllegalStateException.class, () ->
-                service.createBooking(
-                        "k@k.com",
-                        "r1",
-                        LocalDate.parse("2026-01-03"),
-                        LocalDate.parse("2026-01-07")
-                )
+                service.createBooking("k@k.com", "r1",
+                        LocalDate.parse("2026-01-03"), LocalDate.parse("2026-01-07"))
         );
     }
 
     @Test
     void user_can_cancel_own_booking() {
-        Booking b = new Booking(
-                "b1",
-                "u1",
-                "r1",
-                "confirmed",
-                LocalDate.parse("2026-01-01"),
-                LocalDate.parse("2026-01-05"),
-                0.0
-        );
+        Booking b = new Booking("b1", "u1", "r1", "confirmed",
+                LocalDate.parse("2026-01-01"), LocalDate.parse("2026-01-05"), 0);
 
         when(users.findByEmail("k@k.com")).thenReturn(Optional.of(user));
         when(bookings.findById("b1")).thenReturn(Optional.of(b));
@@ -117,23 +140,29 @@ class BookingServiceTest {
         ArgumentCaptor<Booking> captor = ArgumentCaptor.forClass(Booking.class);
         verify(bookings).save(captor.capture());
 
-        Booking saved = captor.getValue();
-        assertEquals("cancelled", saved.getStatus());
-        assertEquals("u1", saved.getUserId());
-        assertEquals("b1", saved.getId());
+        assertEquals("cancelled", captor.getValue().getStatus());
+    }
+
+    @Test
+    void admin_can_cancel_any_booking() {
+        Booking b = new Booking("b1", "u2", "r1", "confirmed",
+                LocalDate.parse("2026-01-01"), LocalDate.parse("2026-01-05"), 0);
+
+        when(users.findByEmail("admin@test.com")).thenReturn(Optional.of(admin));
+        when(bookings.findById("b1")).thenReturn(Optional.of(b));
+
+        service.cancelBooking("b1", "admin@test.com");
+
+        ArgumentCaptor<Booking> captor = ArgumentCaptor.forClass(Booking.class);
+        verify(bookings).save(captor.capture());
+
+        assertEquals("cancelled", captor.getValue().getStatus());
     }
 
     @Test
     void user_cannot_cancel_others_booking() {
-        Booking b = new Booking(
-                "b1",
-                "other",
-                "r1",
-                "confirmed",
-                LocalDate.parse("2026-01-01"),
-                LocalDate.parse("2026-01-05"),
-                0.0
-        );
+        Booking b = new Booking("b1", "other", "r1", "confirmed",
+                LocalDate.parse("2026-01-01"), LocalDate.parse("2026-01-05"), 0);
 
         when(users.findByEmail("k@k.com")).thenReturn(Optional.of(user));
         when(bookings.findById("b1")).thenReturn(Optional.of(b));

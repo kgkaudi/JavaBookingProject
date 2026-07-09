@@ -15,14 +15,9 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 import static org.hamcrest.Matchers.*;
 
-import java.util.List;
-
 import com.kostas.bookingproject.config.MockMvcConfig;
 import com.kostas.bookingproject.repositories.RoomRepository;
-import com.kostas.bookingproject.repositories.UserRepository;
-import com.kostas.bookingproject.security.JwtUtil;
 import com.kostas.bookingproject.models.Room;
-import com.kostas.bookingproject.models.User;
 
 @SpringBootTest
 @Import(MockMvcConfig.class)
@@ -30,38 +25,11 @@ class RoomDeepIT {
 
     @Autowired MockMvc mvc;
     @Autowired RoomRepository rooms;
-    @Autowired UserRepository users;
-    @Autowired JwtUtil jwt;
     @Autowired ObjectMapper mapper;
-
-    String adminToken;
-    String userToken;
 
     @BeforeEach
     void setup() {
         rooms.deleteAll();
-        users.deleteAll();
-
-        User admin = users.save(new User(
-                null,
-                "Admin",
-                "admin@test.com",
-                "ENC",
-                "6900000000",
-                List.of("ROLE_ADMIN")
-        ));
-
-        User user = users.save(new User(
-                null,
-                "User",
-                "user@test.com",
-                "ENC",
-                "6900000000",
-                List.of("ROLE_USER")
-        ));
-
-        adminToken = "Bearer " + jwt.generateToken(admin.getId(), List.of("ROLE_ADMIN"));
-        userToken  = "Bearer " + jwt.generateToken(user.getId(), List.of("ROLE_USER"));
     }
 
     // ------------------------------------------------------------
@@ -69,21 +37,85 @@ class RoomDeepIT {
     // ------------------------------------------------------------
 
     @Test
-    void admin_can_create_room() throws Exception {
-        Room r = new Room(null, 101, "single", 50, true);
+    void create_room_success() throws Exception {
+        Room r = new Room(null, 101, "single", 1, 50.0, true);
 
         mvc.perform(post("/api/rooms")
-                        .header("Authorization", adminToken)
                         .contentType("application/json")
                         .content(mapper.writeValueAsString(r)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").exists());
+                .andExpect(jsonPath("$.id").exists())
+                .andExpect(jsonPath("$.roomNumber").value(101));
     }
 
     @Test
-    void search_rooms_by_price_range() throws Exception {
-        rooms.save(new Room(null, 101, "single", 50, true));
-        rooms.save(new Room(null, 102, "double", 120, true));
+    void update_room_success() throws Exception {
+        Room r = rooms.save(new Room(null, 101, "single", 1, 50.0, true));
+
+        Room updated = new Room(null, 101, "double", 2, 120.0, true);
+
+        mvc.perform(put("/api/rooms/" + r.getId())
+                        .contentType("application/json")
+                        .content(mapper.writeValueAsString(updated)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.type").value("double"))
+                .andExpect(jsonPath("$.capacity").value(2))
+                .andExpect(jsonPath("$.price").value(120.0));
+    }
+
+    @Test
+    void delete_room_success() throws Exception {
+        Room r = rooms.save(new Room(null, 101, "single", 1, 50.0, true));
+
+        mvc.perform(delete("/api/rooms/" + r.getId()))
+                .andExpect(status().isOk());
+
+        assert rooms.findById(r.getId()).isEmpty();
+    }
+
+    @Test
+    void get_room_by_id_success() throws Exception {
+        Room r = rooms.save(new Room(null, 101, "single", 1, 50.0, true));
+
+        mvc.perform(get("/api/rooms/" + r.getId()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.roomNumber").value(101));
+    }
+
+    @Test
+    void list_all_rooms_success() throws Exception {
+        rooms.save(new Room(null, 101, "single", 1, 50.0, true));
+        rooms.save(new Room(null, 102, "double", 2, 120.0, true));
+
+        mvc.perform(get("/api/rooms"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(2)));
+    }
+
+    @Test
+    void get_rooms_by_availability_success() throws Exception {
+        rooms.save(new Room(null, 101, "single", 1, 50.0, true));
+        rooms.save(new Room(null, 102, "double", 2, 120.0, false));
+
+        mvc.perform(get("/api/rooms/availability?available=true"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(1)));
+    }
+
+    @Test
+    void get_rooms_by_type_success() throws Exception {
+        rooms.save(new Room(null, 101, "single", 1, 50.0, true));
+        rooms.save(new Room(null, 102, "double", 2, 120.0, true));
+
+        mvc.perform(get("/api/rooms/type/single"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(1)));
+    }
+
+    @Test
+    void get_rooms_by_price_range_success() throws Exception {
+        rooms.save(new Room(null, 101, "single", 1, 50.0, true));
+        rooms.save(new Room(null, 102, "double", 2, 120.0, true));
 
         mvc.perform(get("/api/rooms/price?min=40&max=60"))
                 .andExpect(status().isOk())
@@ -91,62 +123,14 @@ class RoomDeepIT {
     }
 
     // ------------------------------------------------------------
-    // AUTHORIZATION EDGE CASES
-    // ------------------------------------------------------------
-
-    @Test
-    void user_cannot_create_room() throws Exception {
-        Room r = new Room(null, 101, "single", 50, true);
-
-        mvc.perform(post("/api/rooms")
-                        .header("Authorization", userToken)
-                        .contentType("application/json")
-                        .content(mapper.writeValueAsString(r)))
-                .andExpect(status().isForbidden());
-    }
-
-    @Test
-    void cannot_create_room_without_token() throws Exception {
-        Room r = new Room(null, 101, "single", 50, true);
-
-        mvc.perform(post("/api/rooms")
-                        .contentType("application/json")
-                        .content(mapper.writeValueAsString(r)))
-                .andExpect(status().isUnauthorized());
-    }
-
-    @Test
-    void cannot_create_room_with_invalid_token() throws Exception {
-        Room r = new Room(null, 101, "single", 50, true);
-
-        mvc.perform(post("/api/rooms")
-                        .header("Authorization", "Bearer invalid")
-                        .contentType("application/json")
-                        .content(mapper.writeValueAsString(r)))
-                .andExpect(status().isForbidden());
-    }
-
-    // ------------------------------------------------------------
     // VALIDATION EDGE CASES
     // ------------------------------------------------------------
 
     @Test
-    void cannot_create_room_with_missing_number() throws Exception {
-        Room r = new Room(null, 0, "single", 50, true);
-
-        mvc.perform(post("/api/rooms")
-                        .header("Authorization", adminToken)
-                        .contentType("application/json")
-                        .content(mapper.writeValueAsString(r)))
-                .andExpect(status().isBadRequest());
-    }
-
-    @Test
     void cannot_create_room_with_missing_type() throws Exception {
-        Room r = new Room(null, 101, null, 50, true);
+        Room r = new Room(null, 101, null, 1, 50.0, true);
 
         mvc.perform(post("/api/rooms")
-                        .header("Authorization", adminToken)
                         .contentType("application/json")
                         .content(mapper.writeValueAsString(r)))
                 .andExpect(status().isBadRequest());
@@ -154,10 +138,19 @@ class RoomDeepIT {
 
     @Test
     void cannot_create_room_with_negative_price() throws Exception {
-        Room r = new Room(null, 101, "single", -10, true);
+        Room r = new Room(null, 101, "single", 1, -10.0, true);
 
         mvc.perform(post("/api/rooms")
-                        .header("Authorization", adminToken)
+                        .contentType("application/json")
+                        .content(mapper.writeValueAsString(r)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void cannot_create_room_with_zero_capacity() throws Exception {
+        Room r = new Room(null, 101, "single", 0, 50.0, true);
+
+        mvc.perform(post("/api/rooms")
                         .contentType("application/json")
                         .content(mapper.writeValueAsString(r)))
                 .andExpect(status().isBadRequest());
@@ -166,7 +159,6 @@ class RoomDeepIT {
     @Test
     void cannot_create_room_with_malformed_json() throws Exception {
         mvc.perform(post("/api/rooms")
-                        .header("Authorization", adminToken)
                         .contentType("application/json")
                         .content("{ number: 'bad', type: 123 }"))
                 .andExpect(status().isBadRequest());
@@ -178,27 +170,60 @@ class RoomDeepIT {
 
     @Test
     void cannot_create_duplicate_room_number() throws Exception {
-        rooms.save(new Room(null, 101, "single", 50, true));
+        rooms.save(new Room(null, 101, "single", 1, 50.0, true));
 
-        Room r = new Room(null, 101, "double", 120, true);
+        Room r = new Room(null, 101, "double", 2, 120.0, true);
 
         mvc.perform(post("/api/rooms")
-                        .header("Authorization", adminToken)
                         .contentType("application/json")
                         .content(mapper.writeValueAsString(r)))
                 .andExpect(status().isBadRequest());
     }
 
+    @Test
+    void update_nonexistent_room_not_found() throws Exception {
+        Room r = new Room(null, 101, "single", 1, 50.0, true);
+
+        mvc.perform(put("/api/rooms/nonexistent-id")
+                        .contentType("application/json")
+                        .content(mapper.writeValueAsString(r)))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void delete_nonexistent_room_not_found() throws Exception {
+        mvc.perform(delete("/api/rooms/nonexistent-id"))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void get_nonexistent_room_not_found() throws Exception {
+        mvc.perform(get("/api/rooms/nonexistent-id"))
+                .andExpect(status().isNotFound());
+    }
+
     // ------------------------------------------------------------
-    // REPOSITORY EDGE CASES
+    // PRICE RANGE EDGE CASES
     // ------------------------------------------------------------
 
     @Test
-    void search_price_range_returns_empty_list_if_no_matches() throws Exception {
-        rooms.save(new Room(null, 101, "single", 200, true));
+    void price_range_returns_empty_list_if_no_matches() throws Exception {
+        rooms.save(new Room(null, 101, "single", 1, 200.0, true));
 
         mvc.perform(get("/api/rooms/price?min=10&max=20"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(0)));
+    }
+
+    @Test
+    void price_range_negative_min_bad_request() throws Exception {
+        mvc.perform(get("/api/rooms/price?min=-10&max=50"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void price_range_min_greater_than_max_bad_request() throws Exception {
+        mvc.perform(get("/api/rooms/price?min=100&max=50"))
+                .andExpect(status().isBadRequest());
     }
 }

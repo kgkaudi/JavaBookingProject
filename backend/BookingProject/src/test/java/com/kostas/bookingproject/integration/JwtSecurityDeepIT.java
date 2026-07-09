@@ -14,12 +14,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-import java.time.Instant;
-import java.util.Date;
 import java.util.List;
-
-import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.SignatureAlgorithm;
 
 import com.kostas.bookingproject.config.MockMvcConfig;
 import com.kostas.bookingproject.repositories.UserRepository;
@@ -42,7 +37,6 @@ class JwtSecurityDeepIT {
     void setup() {
         users.deleteAll();
 
-        // ✔ Correct role format
         user = users.save(new User(
                 null,
                 "Kostas",
@@ -52,7 +46,6 @@ class JwtSecurityDeepIT {
                 List.of("ROLE_USER")
         ));
 
-        // ✔ Correct JWT role format
         validToken = "Bearer " + jwt.generateToken(user.getId(), List.of("ROLE_USER"));
     }
 
@@ -75,21 +68,21 @@ class JwtSecurityDeepIT {
     @Test
     void missing_token_unauthorized() throws Exception {
         mvc.perform(get("/api/users/me"))
-                .andExpect(status().isUnauthorized()); // ✔ 401
+                .andExpect(status().isUnauthorized());
     }
 
     @Test
     void invalid_token_forbidden() throws Exception {
         mvc.perform(get("/api/users/me")
                         .header("Authorization", "Bearer invalid"))
-                .andExpect(status().isForbidden()); // ✔ 403
+                .andExpect(status().isForbidden());
     }
 
     @Test
     void malformed_authorization_header_unauthorized() throws Exception {
         mvc.perform(get("/api/users/me")
                         .header("Authorization", "NotBearer token"))
-                .andExpect(status().isUnauthorized()); // ✔ 401
+                .andExpect(status().isUnauthorized());
     }
 
     // ------------------------------------------------------------
@@ -98,15 +91,10 @@ class JwtSecurityDeepIT {
 
     @Test
     void expired_token_forbidden() throws Exception {
-        String expired = Jwts.builder()
-                .setSubject(user.getId())
-                .claim("roles", List.of("ROLE_USER"))
-                .setExpiration(Date.from(Instant.now().minusSeconds(3600)))
-                .signWith(SignatureAlgorithm.HS256, "WRONGKEY12345678901234567890")
-                .compact();
+        String expired = "Bearer " + jwt.generateExpiredToken(user.getId(), List.of("ROLE_USER"));
 
         mvc.perform(get("/api/users/me")
-                        .header("Authorization", "Bearer " + expired))
+                        .header("Authorization", expired))
                 .andExpect(status().isForbidden());
     }
 
@@ -116,28 +104,26 @@ class JwtSecurityDeepIT {
 
     @Test
     void token_with_wrong_signature_forbidden() throws Exception {
-        String wrongSig = Jwts.builder()
-                .setSubject(user.getId())
-                .claim("roles", List.of("ROLE_USER"))
-                .setExpiration(Date.from(Instant.now().plusSeconds(3600)))
-                .signWith(SignatureAlgorithm.HS256, "WRONGKEY12345678901234567890")
-                .compact();
+        // Create a valid token then tamper the signature
+        String token = jwt.generateToken(user.getId(), List.of("ROLE_USER"));
+        String[] parts = token.split("\\.");
+        String tampered = parts[0] + "." + parts[1] + ".WRONGSIGNATURE";
 
         mvc.perform(get("/api/users/me")
-                        .header("Authorization", "Bearer " + wrongSig))
+                        .header("Authorization", "Bearer " + tampered))
                 .andExpect(status().isForbidden());
     }
 
     // ------------------------------------------------------------
-    // WRONG ROLE
+    // MISSING ROLES CLAIM
     // ------------------------------------------------------------
 
     @Test
-    void token_with_wrong_role_forbidden() throws Exception {
-        String adminToken = "Bearer " + jwt.generateToken(user.getId(), List.of("ROLE_ADMIN"));
+    void token_missing_roles_forbidden() throws Exception {
+        String noRoles = "Bearer " + jwt.generateTokenWithoutRoles(user.getId());
 
         mvc.perform(get("/api/users/me")
-                        .header("Authorization", adminToken))
+                        .header("Authorization", noRoles))
                 .andExpect(status().isForbidden());
     }
 

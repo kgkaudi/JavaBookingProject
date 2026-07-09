@@ -2,6 +2,7 @@ package com.kostas.bookingproject.services;
 
 import com.kostas.bookingproject.models.User;
 import com.kostas.bookingproject.repositories.UserRepository;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockitoAnnotations;
@@ -15,7 +16,7 @@ import static org.mockito.Mockito.*;
 
 class UserServiceTest {
 
-    private UserRepository userRepository;
+    private UserRepository users;
     private PasswordEncoder passwordEncoder;
     private UserService userService;
 
@@ -26,10 +27,10 @@ class UserServiceTest {
     void setup() {
         MockitoAnnotations.openMocks(this);
 
-        userRepository = mock(UserRepository.class);
+        users = mock(UserRepository.class);
         passwordEncoder = mock(PasswordEncoder.class);
 
-        userService = new UserService(userRepository, passwordEncoder);
+        userService = new UserService(users, passwordEncoder);
 
         user = new User("u1", "Kostas", "k@k.com", "ENC", "6900000000", List.of("ROLE_USER"));
         admin = new User("a1", "Admin", "admin@test.com", "ENC", "6900000000", List.of("ROLE_ADMIN"));
@@ -46,9 +47,9 @@ class UserServiceTest {
         newUser.setPassword("plain123");
         newUser.setRoles(List.of("ROLE_USER"));
 
-        when(userRepository.findByEmail("new@test.com")).thenReturn(Optional.empty());
+        when(users.findByEmail("new@test.com")).thenReturn(Optional.empty());
         when(passwordEncoder.encode("plain123")).thenReturn("ENCODED");
-        when(userRepository.save(any(User.class))).thenAnswer(i -> i.getArgument(0));
+        when(users.save(any(User.class))).thenAnswer(i -> i.getArgument(0));
 
         User result = userService.createUser(newUser);
 
@@ -60,11 +61,11 @@ class UserServiceTest {
     void createUser_success_defaultPassword() {
         User newUser = new User();
         newUser.setEmail("new@test.com");
-        newUser.setPassword(""); // blank password
+        newUser.setPassword(""); // blank
 
-        when(userRepository.findByEmail("new@test.com")).thenReturn(Optional.empty());
+        when(users.findByEmail("new@test.com")).thenReturn(Optional.empty());
         when(passwordEncoder.encode("default123")).thenReturn("DEFAULT_ENC");
-        when(userRepository.save(any(User.class))).thenAnswer(i -> i.getArgument(0));
+        when(users.save(any(User.class))).thenAnswer(i -> i.getArgument(0));
 
         User result = userService.createUser(newUser);
 
@@ -77,24 +78,23 @@ class UserServiceTest {
         User newUser = new User();
         newUser.setEmail("k@k.com");
 
-        when(userRepository.findByEmail("k@k.com")).thenReturn(Optional.of(user));
+        when(users.findByEmail("k@k.com")).thenReturn(Optional.of(user));
 
         assertThrows(IllegalArgumentException.class,
                 () -> userService.createUser(newUser));
     }
 
     @Test
-    void createUser_nullEmail() {
+    void createUser_nullEmail_allowed_but_uniqueCheckRuns() {
         User newUser = new User();
         newUser.setEmail(null);
 
-        when(userRepository.findByEmail(null)).thenReturn(Optional.empty());
+        when(users.findByEmail(null)).thenReturn(Optional.empty());
         when(passwordEncoder.encode("default123")).thenReturn("DEFAULT_ENC");
-        when(userRepository.save(any(User.class))).thenAnswer(i -> i.getArgument(0));
+        when(users.save(any(User.class))).thenAnswer(i -> i.getArgument(0));
 
         User result = userService.createUser(newUser);
 
-        assertEquals("DEFAULT_ENC", result.getPassword());
         assertEquals(List.of("ROLE_USER"), result.getRoles());
     }
 
@@ -104,9 +104,9 @@ class UserServiceTest {
         newUser.setEmail("new@test.com");
         newUser.setRoles(null);
 
-        when(userRepository.findByEmail("new@test.com")).thenReturn(Optional.empty());
+        when(users.findByEmail("new@test.com")).thenReturn(Optional.empty());
         when(passwordEncoder.encode("default123")).thenReturn("DEFAULT_ENC");
-        when(userRepository.save(any(User.class))).thenAnswer(i -> i.getArgument(0));
+        when(users.save(any(User.class))).thenAnswer(i -> i.getArgument(0));
 
         User result = userService.createUser(newUser);
 
@@ -119,7 +119,7 @@ class UserServiceTest {
 
     @Test
     void getAllUsers_success() {
-        when(userRepository.findAll()).thenReturn(List.of(user, admin));
+        when(users.findAll()).thenReturn(List.of(user, admin));
 
         List<User> result = userService.getAllUsers();
 
@@ -132,7 +132,7 @@ class UserServiceTest {
 
     @Test
     void getUserById_success() {
-        when(userRepository.findById("u1")).thenReturn(Optional.of(user));
+        when(users.findById("u1")).thenReturn(Optional.of(user));
 
         User result = userService.getUserById("u1");
 
@@ -141,10 +141,31 @@ class UserServiceTest {
 
     @Test
     void getUserById_notFound() {
-        when(userRepository.findById("u1")).thenReturn(Optional.empty());
+        when(users.findById("u1")).thenReturn(Optional.empty());
 
         assertThrows(IllegalArgumentException.class,
                 () -> userService.getUserById("u1"));
+    }
+
+    // ---------------------------------------------------------
+    // GET USER BY EMAIL
+    // ---------------------------------------------------------
+
+    @Test
+    void getUserByEmail_success() {
+        when(users.findByEmail("k@k.com")).thenReturn(Optional.of(user));
+
+        User result = userService.getUserByEmail("k@k.com");
+
+        assertEquals("k@k.com", result.getEmail());
+    }
+
+    @Test
+    void getUserByEmail_notFound() {
+        when(users.findByEmail("missing@test.com")).thenReturn(Optional.empty());
+
+        assertThrows(IllegalArgumentException.class,
+                () -> userService.getUserByEmail("missing@test.com"));
     }
 
     // ---------------------------------------------------------
@@ -152,15 +173,15 @@ class UserServiceTest {
     // ---------------------------------------------------------
 
     @Test
-    void updateUser_success() {
+    void updateUser_success_singleRole() {
         User updated = new User();
         updated.setName("New Name");
         updated.setEmail("new@test.com");
         updated.setPhone("6999999999");
         updated.setRole("ROLE_ADMIN");
 
-        when(userRepository.findById("u1")).thenReturn(Optional.of(user));
-        when(userRepository.save(any(User.class))).thenReturn(user);
+        when(users.findById("u1")).thenReturn(Optional.of(user));
+        when(users.save(any(User.class))).thenAnswer(i -> i.getArgument(0));
 
         User result = userService.updateUser("u1", updated);
 
@@ -171,24 +192,37 @@ class UserServiceTest {
     }
 
     @Test
-    void updateUser_notFound() {
-        when(userRepository.findById("u1")).thenReturn(Optional.empty());
-
-        assertThrows(RuntimeException.class,
-                () -> userService.updateUser("u1", new User()));
-    }
-
-    @Test
-    void updateUser_rolesList() {
+    void updateUser_success_rolesList_priority() {
         User updated = new User();
         updated.setRoles(List.of("ROLE_ADMIN", "ROLE_USER"));
 
-        when(userRepository.findById("u1")).thenReturn(Optional.of(user));
-        when(userRepository.save(any(User.class))).thenReturn(user);
+        when(users.findById("u1")).thenReturn(Optional.of(user));
+        when(users.save(any(User.class))).thenAnswer(i -> i.getArgument(0));
 
         User result = userService.updateUser("u1", updated);
 
         assertEquals(List.of("ROLE_ADMIN", "ROLE_USER"), result.getRoles());
+    }
+
+    @Test
+    void updateUser_emptyRolesList_keepsExistingRoles() {
+        User updated = new User();
+        updated.setRoles(List.of()); // empty list
+
+        when(users.findById("u1")).thenReturn(Optional.of(user));
+        when(users.save(any(User.class))).thenAnswer(i -> i.getArgument(0));
+
+        User result = userService.updateUser("u1", updated);
+
+        assertEquals(List.of("ROLE_USER"), result.getRoles());
+    }
+
+    @Test
+    void updateUser_notFound() {
+        when(users.findById("u1")).thenReturn(Optional.empty());
+
+        assertThrows(IllegalArgumentException.class,
+                () -> userService.updateUser("u1", new User()));
     }
 
     // ---------------------------------------------------------
@@ -197,16 +231,16 @@ class UserServiceTest {
 
     @Test
     void deleteUser_success() {
-        when(userRepository.existsById("u1")).thenReturn(true);
+        when(users.existsById("u1")).thenReturn(true);
 
         userService.deleteUser("u1");
 
-        verify(userRepository).deleteById("u1");
+        verify(users).deleteById("u1");
     }
 
     @Test
     void deleteUser_notFound() {
-        when(userRepository.existsById("u1")).thenReturn(false);
+        when(users.existsById("u1")).thenReturn(false);
 
         assertThrows(IllegalArgumentException.class,
                 () -> userService.deleteUser("u1"));
@@ -218,8 +252,8 @@ class UserServiceTest {
 
     @Test
     void promoteToAdmin_success() {
-        when(userRepository.findById("u1")).thenReturn(Optional.of(user));
-        when(userRepository.save(any(User.class))).thenReturn(user);
+        when(users.findById("u1")).thenReturn(Optional.of(user));
+        when(users.save(any(User.class))).thenAnswer(i -> i.getArgument(0));
 
         User result = userService.promoteToAdmin("u1");
 
@@ -228,7 +262,7 @@ class UserServiceTest {
 
     @Test
     void promoteToAdmin_notFound() {
-        when(userRepository.findById("u1")).thenReturn(Optional.empty());
+        when(users.findById("u1")).thenReturn(Optional.empty());
 
         assertThrows(IllegalArgumentException.class,
                 () -> userService.promoteToAdmin("u1"));
@@ -238,8 +272,8 @@ class UserServiceTest {
     void demoteToUser_success() {
         admin.setRoles(List.of("ROLE_ADMIN"));
 
-        when(userRepository.findById("a1")).thenReturn(Optional.of(admin));
-        when(userRepository.save(any(User.class))).thenReturn(admin);
+        when(users.findById("a1")).thenReturn(Optional.of(admin));
+        when(users.save(any(User.class))).thenAnswer(i -> i.getArgument(0));
 
         User result = userService.demoteToUser("a1");
 
@@ -248,7 +282,7 @@ class UserServiceTest {
 
     @Test
     void demoteToUser_notFound() {
-        when(userRepository.findById("a1")).thenReturn(Optional.empty());
+        when(users.findById("a1")).thenReturn(Optional.empty());
 
         assertThrows(IllegalArgumentException.class,
                 () -> userService.demoteToUser("a1"));

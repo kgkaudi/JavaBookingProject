@@ -10,6 +10,7 @@ import com.kostas.bookingproject.repositories.UserRepository;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 @Service
@@ -20,48 +21,66 @@ public class BookingService {
     private final UserRepository userRepository;
 
     public BookingService(BookingRepository bookingRepository,
-            RoomRepository roomRepository,
-            UserRepository userRepository) {
+                          RoomRepository roomRepository,
+                          UserRepository userRepository) {
         this.bookingRepository = bookingRepository;
         this.roomRepository = roomRepository;
         this.userRepository = userRepository;
     }
 
     // ---------------------------------------------------------
-    // CREATE BOOKING
+    // RESPONSE DTO MAPPER
     // ---------------------------------------------------------
-    public Booking createBooking(String email, String roomId,
-            LocalDate startDate, LocalDate endDate) {
-
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-
-        Room room = roomRepository.findById(roomId)
-                .orElseThrow(() -> new RuntimeException("Room not found"));
-
-        if (!isRoomAvailable(roomId, startDate, endDate)) {
-            throw new IllegalStateException("Room is already booked for the selected dates");
-        }
-
-        Booking booking = new Booking();
-        booking.setUserId(user.getId());
-        booking.setRoomId(room.getId());
-        booking.setStartDate(startDate);
-        booking.setEndDate(endDate);
-        booking.setStatus("pending");
-        booking.setTotalPrice(room.getPrice());
-
-        return bookingRepository.save(booking);
+    public BookingResponse toResponse(Booking booking) {
+        return new BookingResponse(
+                booking.getId(),
+                booking.getUserId(),
+                booking.getRoomId(),
+                booking.getStatus(),
+                booking.getStartDate(),
+                booking.getEndDate(),
+                booking.getTotalPrice()
+        );
     }
 
     // ---------------------------------------------------------
-    // CHECK ROOM AVAILABILITY
+    // CREATE BOOKING
     // ---------------------------------------------------------
-    public boolean isRoomAvailable(String roomId, LocalDate startDate, LocalDate endDate) {
-        List<Booking> bookings = bookingRepository.findByRoomId(roomId);
+    public Booking createBooking(String email, String roomId,
+                                 LocalDate startDate, LocalDate endDate) {
 
-        return bookings.stream()
-                .noneMatch(b -> !(endDate.isBefore(b.getStartDate()) || startDate.isAfter(b.getEndDate())));
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+
+        Room room = roomRepository.findById(roomId)
+                .orElseThrow(() -> new IllegalArgumentException("Room not found"));
+
+        if (startDate == null || endDate == null || !endDate.isAfter(startDate)) {
+            throw new IllegalArgumentException("Invalid booking dates");
+        }
+
+        List<Booking> existing = bookingRepository.findByRoomId(roomId);
+
+        for (Booking b : existing) {
+            boolean overlap = !(endDate.isBefore(b.getStartDate()) ||
+                                startDate.isAfter(b.getEndDate()));
+            if (overlap) {
+                throw new IllegalStateException("Room already booked for these dates");
+            }
+        }
+
+        long days = ChronoUnit.DAYS.between(startDate, endDate);
+        double totalPrice = days * room.getPrice();
+
+        Booking booking = new Booking();
+        booking.setUserId(user.getId());
+        booking.setRoomId(roomId);
+        booking.setStartDate(startDate);
+        booking.setEndDate(endDate);
+        booking.setStatus("confirmed");
+        booking.setTotalPrice(totalPrice);
+
+        return bookingRepository.save(booking);
     }
 
     // ---------------------------------------------------------
@@ -75,32 +94,14 @@ public class BookingService {
     }
 
     // ---------------------------------------------------------
-    // GET BOOKING BY ID (USER + ADMIN)
-    // ---------------------------------------------------------
-    public BookingResponse getBookingById(String bookingId, String email) {
-
-        Booking booking = bookingRepository.findById(bookingId)
-                .orElseThrow(() -> new RuntimeException("Booking not found"));
-
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-
-        boolean isAdmin = user.getRoles().contains("ROLE_ADMIN");
-
-        if (!booking.getUserId().equals(user.getId()) && !isAdmin) {
-            throw new RuntimeException("Not authorized to view this booking");
-        }
-
-        return toResponse(booking);
-    }
-
-    // ---------------------------------------------------------
     // GET BOOKINGS FOR USER
     // ---------------------------------------------------------
-    public List<BookingResponse> getBookingsForUser(String email) {
+    public List<BookingResponse> getBookingsForUser(String userIdOrEmail) {
 
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+        // If email is provided, convert to userId
+        User user = userRepository.findByEmail(userIdOrEmail)
+                .orElseGet(() -> userRepository.findById(userIdOrEmail)
+                        .orElseThrow(() -> new IllegalArgumentException("User not found")));
 
         return bookingRepository.findByUserId(user.getId())
                 .stream()
@@ -109,36 +110,74 @@ public class BookingService {
     }
 
     // ---------------------------------------------------------
-    // GET BOOKINGS FOR ROOM (ADMIN)
+    // GET BOOKINGS FOR ROOM
     // ---------------------------------------------------------
     public List<Booking> getBookingsForRoom(String roomId) {
         return bookingRepository.findByRoomId(roomId);
     }
 
     // ---------------------------------------------------------
-    // UPDATE BOOKING (ADMIN)
+    // GET BOOKING BY ID (USER + ADMIN)
     // ---------------------------------------------------------
-    public BookingResponse updateBooking(String bookingId, String email, Booking updatedBooking) {
+    public BookingResponse getBookingById(String bookingId, String email) {
 
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-
-        boolean isAdmin = user.getRoles().contains("ROLE_ADMIN");
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
 
         Booking booking = bookingRepository.findById(bookingId)
-                .orElseThrow(() -> new RuntimeException("Booking not found"));
+                .orElseThrow(() -> new IllegalArgumentException("Booking not found"));
 
-        if (!booking.getUserId().equals(user.getId()) && !isAdmin) {
-            throw new RuntimeException("Not authorized to update this booking");
+        boolean isAdmin = user.getRoles().contains("ROLE_ADMIN");
+        boolean isOwner = booking.getUserId().equals(user.getId());
+
+        if (!isAdmin && !isOwner) {
+            throw new RuntimeException("Not allowed to view this booking");
         }
 
+        return toResponse(booking);
+    }
+
+    // ---------------------------------------------------------
+    // CHECK AVAILABILITY
+    // ---------------------------------------------------------
+    public boolean isRoomAvailable(String roomId, LocalDate startDate, LocalDate endDate) {
+
+        List<Booking> existing = bookingRepository.findByRoomId(roomId);
+
+        for (Booking b : existing) {
+            boolean overlap = !(endDate.isBefore(b.getStartDate()) ||
+                                startDate.isAfter(b.getEndDate()));
+            if (overlap) return false;
+        }
+
+        return true;
+    }
+
+    // ---------------------------------------------------------
+    // UPDATE BOOKING (ADMIN)
+    // ---------------------------------------------------------
+    public BookingResponse updateBooking(String bookingId,
+                                         String email,
+                                         Booking updatedBooking) {
+
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+
+        if (!user.getRoles().contains("ROLE_ADMIN")) {
+            throw new RuntimeException("Only admin can update bookings");
+        }
+
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new IllegalArgumentException("Booking not found"));
+
+        booking.setStatus(updatedBooking.getStatus());
         booking.setStartDate(updatedBooking.getStartDate());
         booking.setEndDate(updatedBooking.getEndDate());
-        booking.setStatus(updatedBooking.getStatus());
-        booking.setRoomId(updatedBooking.getRoomId());
         booking.setTotalPrice(updatedBooking.getTotalPrice());
 
-        return toResponse(bookingRepository.save(booking));
+        bookingRepository.save(booking);
+
+        return toResponse(booking);
     }
 
     // ---------------------------------------------------------
@@ -147,38 +186,19 @@ public class BookingService {
     public void cancelBooking(String bookingId, String email) {
 
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
 
         Booking booking = bookingRepository.findById(bookingId)
-                .orElseThrow(() -> new RuntimeException("Booking not found"));
+                .orElseThrow(() -> new IllegalArgumentException("Booking not found"));
 
         boolean isAdmin = user.getRoles().contains("ROLE_ADMIN");
+        boolean isOwner = booking.getUserId().equals(user.getId());
 
-        if (!booking.getUserId().equals(user.getId()) && !isAdmin) {
-            throw new RuntimeException("Not authorized to cancel this booking");
+        if (!isAdmin && !isOwner) {
+            throw new RuntimeException("Not allowed to cancel this booking");
         }
 
         booking.setStatus("cancelled");
         bookingRepository.save(booking);
     }
-
-    // ---------------------------------------------------------
-    // ENTITY → DTO
-    // ---------------------------------------------------------
-    public BookingResponse toResponse(Booking b) {
-        Room room = roomRepository.findById(b.getRoomId()).orElse(null);
-        String roomName = (room != null)
-                ? "Room " + room.getRoomNumber()
-                : "Unknown Room";
-
-        return new BookingResponse(
-                b.getId(),
-                roomName,
-                b.getUserId(),
-                b.getStatus(),
-                b.getStartDate(),
-                b.getEndDate(),
-                b.getTotalPrice());
-    }
-
 }
