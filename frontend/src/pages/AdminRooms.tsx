@@ -1,5 +1,15 @@
 import { useEffect, useState } from "react";
-import { Table, Tag, Button, message, Modal, Form, Input, InputNumber, Select } from "antd";
+import {
+  Table,
+  Tag,
+  Button,
+  message,
+  Modal,
+  Form,
+  InputNumber,
+  Select,
+  App,
+} from "antd";
 import axios from "../api/axios";
 
 interface Room {
@@ -12,6 +22,7 @@ interface Room {
 }
 
 export default function AdminRooms() {
+  const { modal } = App.useApp(); // ✅ React 18 compatible modal
   const [rooms, setRooms] = useState<Room[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -54,18 +65,16 @@ export default function AdminRooms() {
   };
 
   // ---------------------------------------------------------
-  // SAVE ROOM (CREATE or UPDATE)
+  // SAVE ROOM
   // ---------------------------------------------------------
   const saveRoom = async () => {
     try {
       const values = await form.validateFields();
 
       if (editingRoom) {
-        // UPDATE
         await axios.put(`/api/rooms/${editingRoom.id}`, values);
         message.success("Room updated");
       } else {
-        // CREATE
         await axios.post("/api/rooms", values);
         message.success("Room created");
       }
@@ -79,17 +88,17 @@ export default function AdminRooms() {
   };
 
   // ---------------------------------------------------------
-  // DELETE ROOM
+  // DELETE ROOM (React 18 safe)
   // ---------------------------------------------------------
-  const deleteRoom = async (roomId: string) => {
-    Modal.confirm({
-      title: "Delete Room",
-      content: "Are you sure you want to delete this room?",
+  const deleteRoom = (room: Room) => {
+    modal.confirm({
+      title: `Delete Room ${room.roomNumber}?`,
+      content: `This will permanently remove room ${room.roomNumber}.`,
       okText: "Delete",
       okType: "danger",
       onOk: async () => {
         try {
-          await axios.delete(`/api/rooms/${roomId}`);
+          await axios.delete(`/api/rooms/${room.id}`);
           message.success("Room deleted");
           loadRooms();
         } catch {
@@ -158,7 +167,11 @@ export default function AdminRooms() {
       ],
       onFilter: (value: boolean, record: Room) => record.available === value,
       render: (available: boolean) =>
-        available ? <Tag color="green">Available</Tag> : <Tag color="red">Booked</Tag>,
+        available ? (
+          <Tag color="green">Available</Tag>
+        ) : (
+          <Tag color="red">Booked</Tag>
+        ),
     },
     {
       title: "Actions",
@@ -177,7 +190,7 @@ export default function AdminRooms() {
             {room.available ? "Mark Booked" : "Mark Available"}
           </Button>
 
-          <Button danger size="small" onClick={() => deleteRoom(room.id)}>
+          <Button danger size="small" onClick={() => deleteRoom(room)}>
             Delete
           </Button>
         </div>

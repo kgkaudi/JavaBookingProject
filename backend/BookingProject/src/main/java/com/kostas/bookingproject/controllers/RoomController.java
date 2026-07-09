@@ -26,6 +26,11 @@ public class RoomController {
         return roomService.updateRoom(roomId, room);
     }
 
+    @DeleteMapping("/{roomId}")
+    public void deleteRoom(@PathVariable String roomId) {
+        roomService.deleteRoom(roomId);
+    }
+
     @GetMapping
     public List<Room> getAllRooms() {
         return roomService.getAllRooms();
@@ -49,8 +54,7 @@ public class RoomController {
     @GetMapping("/price")
     public List<Room> getRoomsByPriceRange(
             @RequestParam double min,
-            @RequestParam double max
-    ) {
+            @RequestParam double max) {
         return roomService.getRoomsByPriceRange(min, max);
     }
 }

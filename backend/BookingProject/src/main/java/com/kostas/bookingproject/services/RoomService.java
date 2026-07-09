@@ -35,10 +35,21 @@ public class RoomService {
 
         existing.setRoomNumber(updatedRoom.getRoomNumber());
         existing.setType(updatedRoom.getType());
+        existing.setCapacity(updatedRoom.getCapacity()); // ⭐ FIXED
         existing.setPrice(updatedRoom.getPrice());
         existing.setAvailable(updatedRoom.isAvailable());
 
         return roomRepository.save(existing);
+    }
+
+    // ---------------------------------------------------------
+    // DELETE ROOM
+    // ---------------------------------------------------------
+    public void deleteRoom(String roomId) {
+        if (!roomRepository.existsById(roomId)) {
+            throw new IllegalArgumentException("Room not found");
+        }
+        roomRepository.deleteById(roomId);
     }
 
     // ---------------------------------------------------------
