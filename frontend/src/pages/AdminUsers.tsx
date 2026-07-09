@@ -1,5 +1,15 @@
 import { useEffect, useState } from "react";
-import { Table, Tag, Button, message, Modal, Form, Input, Select } from "antd";
+import {
+  Table,
+  Tag,
+  Button,
+  message,
+  Modal,
+  Form,
+  Input,
+  Select,
+  App,
+} from "antd";
 import axios from "../api/axios";
 
 interface User {
@@ -7,10 +17,11 @@ interface User {
   name: string;
   email: string;
   phone: string;
-  role: string; // ✅ single role
+  role: string;
 }
 
 export default function AdminUsers() {
+  const { modal } = App.useApp(); // ✅ React 18‑compatible modal context
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
@@ -67,11 +78,7 @@ export default function AdminUsers() {
   const saveUser = async () => {
     try {
       const values = await form.validateFields();
-
-      const payload = {
-        ...values,
-        role: values.role,
-      };
+      const payload = { ...values, role: values.role };
 
       if (editingUser) {
         await axios.put(`/api/users/${editingUser.id}`, payload);
@@ -90,17 +97,17 @@ export default function AdminUsers() {
   };
 
   // ---------------------------------------------------------
-  // DELETE USER
+  // DELETE USER (React 18‑safe)
   // ---------------------------------------------------------
-  const deleteUser = async (userId: string) => {
-    Modal.confirm({
-      title: "Delete User",
-      content: "Are you sure you want to delete this user?",
+  const deleteUser = (user: User) => {
+    modal.confirm({
+      title: `Delete ${user.name}?`,
+      content: `This will permanently remove ${user.email}.`,
       okText: "Delete",
       okType: "danger",
       onOk: async () => {
         try {
-          await axios.delete(`/api/users/${userId}`);
+          await axios.delete(`/api/users/${user.id}`);
           message.success("User deleted");
           loadUsers();
         } catch {
@@ -135,11 +142,14 @@ export default function AdminUsers() {
       title: "Role",
       dataIndex: "role",
       key: "role",
-      render: (role: string | undefined) => (
-        <Tag color={role === "ROLE_ADMIN" ? "red" : "blue"}>
-          {role ? role.replace("ROLE_", "") : "Unknown"}
-        </Tag>
-      ),
+      render: (role: string | undefined) => {
+        const safeRole = role || "ROLE_USER";
+        return (
+          <Tag color={safeRole === "ROLE_ADMIN" ? "red" : "blue"}>
+            {safeRole.replace("ROLE_", "")}
+          </Tag>
+        );
+      },
     },
     {
       title: "Actions",
@@ -149,7 +159,7 @@ export default function AdminUsers() {
           <Button size="small" onClick={() => openModal(user)}>
             Edit
           </Button>
-          <Button danger size="small" onClick={() => deleteUser(user.id)}>
+          <Button danger size="small" onClick={() => deleteUser(user)}>
             Delete
           </Button>
         </div>
