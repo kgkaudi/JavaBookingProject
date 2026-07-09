@@ -4,9 +4,7 @@ import { useAuth } from "../context/AuthContext";
 
 export default function Profile() {
   const { user, updateUser } = useAuth();
-  // console.log(user); // keep for debugging
 
-  // Handle nested structure
   const profile = user?.user || user;
 
   if (!profile) {
@@ -58,8 +56,8 @@ export default function Profile() {
         layout="vertical"
         initialValues={{
           name: profile.name,
-          email: profile.email,
           phone: profile.phone,
+          email: profile.email,
         }}
         onFinish={handleSubmit}
         style={{ marginTop: 32 }}
@@ -72,12 +70,8 @@ export default function Profile() {
           <Input placeholder="Enter your name" />
         </Form.Item>
 
-        <Form.Item
-          name="email"
-          label="Email"
-          rules={[{ required: true, message: "Email is required" }]}
-        >
-          <Input placeholder="Enter your email" />
+        <Form.Item name="email" hidden>
+          <Input type="hidden" />
         </Form.Item>
 
         <Form.Item name="phone" label="Phone">

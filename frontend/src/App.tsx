@@ -10,13 +10,15 @@ import ProLayoutShell from "./layouts/ProLayoutShell";
 import Profile from "./pages/Profile";
 import RoomDetails from "./pages/RoomDetails";
 import Unauthorized from "./pages/Unauthorized";
+import Home from "./pages/Home";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 
 // Admin pages
 import AdminPanel from "./pages/AdminPanel";
 import AdminUsers from "./pages/AdminUsers";
 import AdminRooms from "./pages/AdminRooms";
 import AdminBookings from "./pages/AdminBookings";
-import Home from "./pages/Home";
 
 export default function App({ setDarkMode, darkMode }) {
   return (
@@ -26,6 +28,10 @@ export default function App({ setDarkMode, darkMode }) {
         {/* Public Routes */}
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
+
+        {/* Forgot Password Flow */}
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
 
         {/* Protected Layout + Nested Protected Pages */}
         <Route

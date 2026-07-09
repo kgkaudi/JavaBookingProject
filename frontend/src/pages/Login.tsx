@@ -102,6 +102,10 @@ export default function Login() {
         <div style={{ textAlign: "center", marginTop: 16 }}>
           Don’t have an account? <Link to="/signup">Sign Up</Link>
         </div>
+
+        <div style={{ marginTop: 12, textAlign: "center" }}>
+          <Link to="/forgot-password">Forgot password?</Link>
+        </div>
       </Card>
     </div>
   );

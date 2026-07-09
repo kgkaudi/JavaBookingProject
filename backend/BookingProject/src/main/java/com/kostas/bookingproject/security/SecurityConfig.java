@@ -30,69 +30,87 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
 
         http
-                .csrf(csrf -> csrf.disable())
-                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-                .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            // ---------------------------------------------------------
+            // CORE SECURITY SETTINGS
+            // ---------------------------------------------------------
+            .csrf(csrf -> csrf.disable())
+            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+            .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
-                .authorizeHttpRequests(auth -> auth
+            // ---------------------------------------------------------
+            // AUTHORIZATION RULES
+            // ---------------------------------------------------------
+            .authorizeHttpRequests(auth -> auth
 
-                        // PUBLIC
-                        .requestMatchers("/api/auth/**").permitAll()
-                        .requestMatchers("/api/rooms/price/**").permitAll()
+                // PUBLIC ENDPOINTS (no JWT required)
+                .requestMatchers(
+                        "/api/auth/login",
+                        "/api/auth/signup",
+                        "/api/auth/request-reset",
+                        "/api/auth/reset-password",
+                        "/api/auth/logout"
+                ).permitAll()
+                .requestMatchers("/api/rooms/price/**").permitAll()
 
-                        // USER PROFILE
-                        .requestMatchers(HttpMethod.GET, "/api/users/me").hasAnyAuthority("ROLE_USER", "ROLE_ADMIN")
-                        .requestMatchers(HttpMethod.PUT, "/api/users/me").hasAnyAuthority("ROLE_USER", "ROLE_ADMIN")
+                // USER PROFILE
+                .requestMatchers(HttpMethod.GET, "/api/users/me")
+                    .hasAnyAuthority("ROLE_USER", "ROLE_ADMIN")
+                .requestMatchers(HttpMethod.POST, "/api/users/**").hasAuthority("ROLE_ADMIN")
+                .requestMatchers(HttpMethod.PUT, "/api/users/me")
+                    .hasAnyAuthority("ROLE_USER", "ROLE_ADMIN")
 
-                        // ADMIN USER MANAGEMENT
-                        .requestMatchers(HttpMethod.GET, "/api/users/**").hasAuthority("ROLE_ADMIN")
-                        .requestMatchers(HttpMethod.DELETE, "/api/users/**").hasAuthority("ROLE_ADMIN")
+                // ADMIN USER MANAGEMENT
+                .requestMatchers(HttpMethod.GET, "/api/users/**").hasAuthority("ROLE_ADMIN")
+                .requestMatchers(HttpMethod.DELETE, "/api/users/**").hasAuthority("ROLE_ADMIN")
 
-                        // ROOMS
-                        .requestMatchers(HttpMethod.GET, "/api/rooms/**").authenticated()
-                        .requestMatchers(HttpMethod.POST, "/api/rooms/**").hasAuthority("ROLE_ADMIN")
-                        .requestMatchers(HttpMethod.PUT, "/api/rooms/**").hasAuthority("ROLE_ADMIN")
-                        .requestMatchers(HttpMethod.DELETE, "/api/rooms/**").hasAuthority("ROLE_ADMIN")
+                // ROOMS
+                .requestMatchers(HttpMethod.GET, "/api/rooms/**").authenticated()
+                .requestMatchers(HttpMethod.POST, "/api/rooms/**").hasAuthority("ROLE_ADMIN")
+                .requestMatchers(HttpMethod.PUT, "/api/rooms/**").hasAuthority("ROLE_ADMIN")
+                .requestMatchers(HttpMethod.DELETE, "/api/rooms/**").hasAuthority("ROLE_ADMIN")
 
-                        // BOOKINGS — ADMIN LIST ALL
-                        .requestMatchers(HttpMethod.GET, "/api/bookings").hasAuthority("ROLE_ADMIN")
+                // BOOKINGS
+                .requestMatchers(HttpMethod.GET, "/api/bookings").hasAuthority("ROLE_ADMIN")
+                .requestMatchers(HttpMethod.GET, "/api/bookings/availability")
+                    .hasAnyAuthority("ROLE_USER", "ROLE_ADMIN")
+                .requestMatchers(HttpMethod.GET, "/api/bookings/me")
+                    .hasAnyAuthority("ROLE_USER", "ROLE_ADMIN")
+                .requestMatchers(HttpMethod.GET, "/api/bookings/*")
+                    .hasAnyAuthority("ROLE_USER", "ROLE_ADMIN")
+                .requestMatchers(HttpMethod.GET, "/api/bookings/user/**").hasAuthority("ROLE_ADMIN")
+                .requestMatchers(HttpMethod.GET, "/api/bookings/room/**").hasAuthority("ROLE_ADMIN")
+                .requestMatchers(HttpMethod.POST, "/api/bookings")
+                    .hasAnyAuthority("ROLE_USER", "ROLE_ADMIN")
+                .requestMatchers(HttpMethod.DELETE, "/api/bookings/**").hasAuthority("ROLE_USER")
 
-                        // BOOKINGS — AVAILABILITY
-                        .requestMatchers(HttpMethod.GET, "/api/bookings/availability")
-                                .hasAnyAuthority("ROLE_USER", "ROLE_ADMIN")
+                // EVERYTHING ELSE
+                .anyRequest().authenticated()
+            )
 
-                        // BOOKINGS — USER'S OWN
-                        .requestMatchers(HttpMethod.GET, "/api/bookings/me")
-                                .hasAnyAuthority("ROLE_USER", "ROLE_ADMIN")
-
-                        // BOOKINGS — VIEW BY ID
-                        .requestMatchers(HttpMethod.GET, "/api/bookings/*")
-                                .hasAnyAuthority("ROLE_USER", "ROLE_ADMIN")
-
-                        // BOOKINGS — ADMIN VIEW BY USER OR ROOM
-                        .requestMatchers(HttpMethod.GET, "/api/bookings/user/**").hasAuthority("ROLE_ADMIN")
-                        .requestMatchers(HttpMethod.GET, "/api/bookings/room/**").hasAuthority("ROLE_ADMIN")
-
-                        // BOOKINGS — USER ACTIONS
-                        .requestMatchers(HttpMethod.POST, "/api/bookings").hasAnyAuthority("ROLE_USER", "ROLE_ADMIN")
-                        .requestMatchers(HttpMethod.DELETE, "/api/bookings/**").hasAuthority("ROLE_USER")
-
-                        // EVERYTHING ELSE
-                        .anyRequest().authenticated()
-                )
-
-                .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
+            // ---------------------------------------------------------
+            // FILTER ORDER
+            // ---------------------------------------------------------
+            .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
 
+    // ---------------------------------------------------------
+    // CORS CONFIGURATION
+    // ---------------------------------------------------------
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
+
+        // Explicit origin for React frontend
         config.setAllowedOrigins(List.of("http://localhost:5173"));
+
+        // Allowed methods and headers
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        config.setAllowedHeaders(List.of("*"));
-        config.setExposedHeaders(List.of("Authorization", "Content-Type"));
+        config.setAllowedHeaders(List.of("Authorization", "Content-Type"));
+        config.setExposedHeaders(List.of("Authorization"));
+
+        // Allow credentials (cookies, headers)
         config.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
@@ -100,6 +118,9 @@ public class SecurityConfig {
         return source;
     }
 
+    // ---------------------------------------------------------
+    // AUTHENTICATION MANAGER + PASSWORD ENCODER
+    // ---------------------------------------------------------
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
         return config.getAuthenticationManager();

@@ -2,6 +2,7 @@ package com.kostas.bookingproject.services;
 
 import com.kostas.bookingproject.models.User;
 import com.kostas.bookingproject.repositories.UserRepository;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -10,9 +11,11 @@ import java.util.List;
 public class UserService {
 
     private final UserRepository users;
+    private final PasswordEncoder passwordEncoder;
 
-    public UserService(UserRepository users) {
+    public UserService(UserRepository users, PasswordEncoder passwordEncoder) {
         this.users = users;
+        this.passwordEncoder = passwordEncoder;
     }
 
     // ---------------------------------------------------------
@@ -31,7 +34,32 @@ public class UserService {
     }
 
     // ---------------------------------------------------------
-    // UPDATE USER (INCLUDING ROLE)
+    // CREATE USER (ADMIN)
+    // ---------------------------------------------------------
+    public User createUser(User newUser) {
+
+        // Validate email uniqueness
+        if (users.findByEmail(newUser.getEmail()).isPresent()) {
+            throw new IllegalArgumentException("Email already exists");
+        }
+
+        // Encode password or set default
+        if (newUser.getPassword() == null || newUser.getPassword().isBlank()) {
+            newUser.setPassword(passwordEncoder.encode("default123"));
+        } else {
+            newUser.setPassword(passwordEncoder.encode(newUser.getPassword()));
+        }
+
+        // Ensure roles exist
+        if (newUser.getRoles() == null || newUser.getRoles().isEmpty()) {
+            newUser.setRoles(List.of("ROLE_USER"));
+        }
+
+        return users.save(newUser);
+    }
+
+    // ---------------------------------------------------------
+    // UPDATE USER
     // ---------------------------------------------------------
     public User updateUser(String userId, User updatedUser) {
         User existingUser = users.findById(userId)
@@ -41,11 +69,11 @@ public class UserService {
         existingUser.setEmail(updatedUser.getEmail());
         existingUser.setPhone(updatedUser.getPhone());
 
-        // ✅ Handle single role or list
-        if (updatedUser.getRole() != null) {
-            existingUser.setRoles(List.of(updatedUser.getRole()));
-        } else if (updatedUser.getRoles() != null && !updatedUser.getRoles().isEmpty()) {
+        // FIXED ROLE HANDLING
+        if (updatedUser.getRoles() != null && !updatedUser.getRoles().isEmpty()) {
             existingUser.setRoles(updatedUser.getRoles());
+        } else if (updatedUser.getRole() != null && !updatedUser.getRole().isBlank()) {
+            existingUser.setRoles(List.of(updatedUser.getRole()));
         }
 
         return users.save(existingUser);
@@ -65,17 +93,13 @@ public class UserService {
     // PROMOTE / DEMOTE
     // ---------------------------------------------------------
     public User promoteToAdmin(String id) {
-        User user = users.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
-
+        User user = getUserById(id);
         user.setRoles(List.of("ROLE_ADMIN"));
         return users.save(user);
     }
 
     public User demoteToUser(String id) {
-        User user = users.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
-
+        User user = getUserById(id);
         user.setRoles(List.of("ROLE_USER"));
         return users.save(user);
     }

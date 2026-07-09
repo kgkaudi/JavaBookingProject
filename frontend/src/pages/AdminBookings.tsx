@@ -162,7 +162,7 @@ export default function AdminBookings() {
   const columns = [
     {
       title: "Room",
-      dataIndex: "roomId",
+      dataIndex: "room",
       key: "roomId",
       render: (roomId: string) => {
         const room = rooms.find((r) => r.id === roomId);
@@ -205,8 +205,8 @@ export default function AdminBookings() {
           status === "confirmed"
             ? "green"
             : status === "pending"
-            ? "blue"
-            : "red";
+              ? "blue"
+              : "red";
         return <Tag color={color}>{status}</Tag>;
       },
     },

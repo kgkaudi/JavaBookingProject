@@ -4,6 +4,8 @@ import com.kostas.bookingproject.models.User;
 import com.kostas.bookingproject.repositories.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockitoAnnotations;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.Optional;
 import java.util.List;
@@ -14,6 +16,7 @@ import static org.mockito.Mockito.*;
 class UserServiceTest {
 
     private UserRepository userRepository;
+    private PasswordEncoder passwordEncoder;
     private UserService userService;
 
     User user;
@@ -21,11 +24,93 @@ class UserServiceTest {
 
     @BeforeEach
     void setup() {
+        MockitoAnnotations.openMocks(this);
+
         userRepository = mock(UserRepository.class);
-        userService = new UserService(userRepository);
+        passwordEncoder = mock(PasswordEncoder.class);
+
+        userService = new UserService(userRepository, passwordEncoder);
 
         user = new User("u1", "Kostas", "k@k.com", "ENC", "6900000000", List.of("ROLE_USER"));
         admin = new User("a1", "Admin", "admin@test.com", "ENC", "6900000000", List.of("ROLE_ADMIN"));
+    }
+
+    // ---------------------------------------------------------
+    // CREATE USER
+    // ---------------------------------------------------------
+
+    @Test
+    void createUser_success_withPassword() {
+        User newUser = new User();
+        newUser.setEmail("new@test.com");
+        newUser.setPassword("plain123");
+        newUser.setRoles(List.of("ROLE_USER"));
+
+        when(userRepository.findByEmail("new@test.com")).thenReturn(Optional.empty());
+        when(passwordEncoder.encode("plain123")).thenReturn("ENCODED");
+        when(userRepository.save(any(User.class))).thenAnswer(i -> i.getArgument(0));
+
+        User result = userService.createUser(newUser);
+
+        assertEquals("ENCODED", result.getPassword());
+        assertEquals(List.of("ROLE_USER"), result.getRoles());
+    }
+
+    @Test
+    void createUser_success_defaultPassword() {
+        User newUser = new User();
+        newUser.setEmail("new@test.com");
+        newUser.setPassword(""); // blank password
+
+        when(userRepository.findByEmail("new@test.com")).thenReturn(Optional.empty());
+        when(passwordEncoder.encode("default123")).thenReturn("DEFAULT_ENC");
+        when(userRepository.save(any(User.class))).thenAnswer(i -> i.getArgument(0));
+
+        User result = userService.createUser(newUser);
+
+        assertEquals("DEFAULT_ENC", result.getPassword());
+        assertEquals(List.of("ROLE_USER"), result.getRoles());
+    }
+
+    @Test
+    void createUser_emailAlreadyExists() {
+        User newUser = new User();
+        newUser.setEmail("k@k.com");
+
+        when(userRepository.findByEmail("k@k.com")).thenReturn(Optional.of(user));
+
+        assertThrows(IllegalArgumentException.class,
+                () -> userService.createUser(newUser));
+    }
+
+    @Test
+    void createUser_nullEmail() {
+        User newUser = new User();
+        newUser.setEmail(null);
+
+        when(userRepository.findByEmail(null)).thenReturn(Optional.empty());
+        when(passwordEncoder.encode("default123")).thenReturn("DEFAULT_ENC");
+        when(userRepository.save(any(User.class))).thenAnswer(i -> i.getArgument(0));
+
+        User result = userService.createUser(newUser);
+
+        assertEquals("DEFAULT_ENC", result.getPassword());
+        assertEquals(List.of("ROLE_USER"), result.getRoles());
+    }
+
+    @Test
+    void createUser_nullRoles_assignDefault() {
+        User newUser = new User();
+        newUser.setEmail("new@test.com");
+        newUser.setRoles(null);
+
+        when(userRepository.findByEmail("new@test.com")).thenReturn(Optional.empty());
+        when(passwordEncoder.encode("default123")).thenReturn("DEFAULT_ENC");
+        when(userRepository.save(any(User.class))).thenAnswer(i -> i.getArgument(0));
+
+        User result = userService.createUser(newUser);
+
+        assertEquals(List.of("ROLE_USER"), result.getRoles());
     }
 
     // ---------------------------------------------------------
@@ -91,6 +176,19 @@ class UserServiceTest {
 
         assertThrows(RuntimeException.class,
                 () -> userService.updateUser("u1", new User()));
+    }
+
+    @Test
+    void updateUser_rolesList() {
+        User updated = new User();
+        updated.setRoles(List.of("ROLE_ADMIN", "ROLE_USER"));
+
+        when(userRepository.findById("u1")).thenReturn(Optional.of(user));
+        when(userRepository.save(any(User.class))).thenReturn(user);
+
+        User result = userService.updateUser("u1", updated);
+
+        assertEquals(List.of("ROLE_ADMIN", "ROLE_USER"), result.getRoles());
     }
 
     // ---------------------------------------------------------

@@ -45,6 +45,15 @@ public class UserController {
     }
 
     // ---------------------------------------------------------
+    // CREATE USER (ADMIN)
+    // ---------------------------------------------------------
+    @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
+    public User createUser(@RequestBody User newUser) {
+        return userService.createUser(newUser);
+    }
+
+    // ---------------------------------------------------------
     // UPDATE USER (ADMIN or SELF)
     // ---------------------------------------------------------
     @PutMapping("/{userId}")
