@@ -10,7 +10,6 @@ import com.kostas.bookingproject.repositories.UserRepository;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
-import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 @Service
@@ -21,8 +20,8 @@ public class BookingService {
     private final UserRepository userRepository;
 
     public BookingService(BookingRepository bookingRepository,
-            RoomRepository roomRepository,
-            UserRepository userRepository) {
+                          RoomRepository roomRepository,
+                          UserRepository userRepository) {
         this.bookingRepository = bookingRepository;
         this.roomRepository = roomRepository;
         this.userRepository = userRepository;
@@ -43,14 +42,14 @@ public class BookingService {
                 booking.getStatus(),
                 booking.getStartDate(),
                 booking.getEndDate(),
-                booking.getTotalPrice());
+                booking.getTotalPrice()
+        );
     }
 
     // ---------------------------------------------------------
     // CREATE BOOKING
     // ---------------------------------------------------------
-    public Booking createBooking(String email, String roomId,
-            LocalDate startDate, LocalDate endDate) {
+    public Booking createBooking(String email, String roomId, LocalDate start, LocalDate end) {
 
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
@@ -58,30 +57,34 @@ public class BookingService {
         Room room = roomRepository.findById(roomId)
                 .orElseThrow(() -> new IllegalArgumentException("Room not found"));
 
-        if (startDate == null || endDate == null || !endDate.isAfter(startDate)) {
-            throw new IllegalArgumentException("Invalid booking dates");
+        if (!room.isAvailable()) {
+            throw new IllegalArgumentException("Room is marked unavailable");
+        }
+
+        if (start.isAfter(end) || start.isEqual(end)) {
+            throw new IllegalArgumentException("Invalid date range");
         }
 
         List<Booking> existing = bookingRepository.findByRoomId(roomId);
+        boolean overlap = existing.stream()
+                .anyMatch(b -> !(end.isBefore(b.getStartDate()) || start.isAfter(b.getEndDate())));
 
-        for (Booking b : existing) {
-            boolean overlap = !(endDate.isBefore(b.getStartDate()) ||
-                    startDate.isAfter(b.getEndDate()));
-            if (overlap) {
-                throw new IllegalStateException("Room already booked for these dates");
-            }
+        if (overlap) {
+            throw new IllegalStateException("Dates overlap with existing booking");
         }
 
-        long days = ChronoUnit.DAYS.between(startDate, endDate);
-        double totalPrice = days * room.getPrice();
+        long days = end.toEpochDay() - start.toEpochDay();
+        double total = room.getPrice() * days;
 
-        Booking booking = new Booking();
-        booking.setUserId(user.getId());
-        booking.setRoomId(roomId);
-        booking.setStartDate(startDate);
-        booking.setEndDate(endDate);
-        booking.setStatus("confirmed");
-        booking.setTotalPrice(totalPrice);
+        Booking booking = new Booking(
+                null,
+                user.getId(),
+                roomId,
+                "confirmed",
+                start,
+                end,
+                total
+        );
 
         return bookingRepository.save(booking);
     }
@@ -90,6 +93,7 @@ public class BookingService {
     // DELETE BOOKING (ADMIN)
     // ---------------------------------------------------------
     public void deleteBooking(String bookingId, String email) {
+
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
 
@@ -118,7 +122,6 @@ public class BookingService {
     // ---------------------------------------------------------
     public List<BookingResponse> getBookingsForUser(String userIdOrEmail) {
 
-        // If email is provided, convert to userId
         User user = userRepository.findByEmail(userIdOrEmail)
                 .orElseGet(() -> userRepository.findById(userIdOrEmail)
                         .orElseThrow(() -> new IllegalArgumentException("User not found")));
@@ -162,13 +165,23 @@ public class BookingService {
     // ---------------------------------------------------------
     public boolean isRoomAvailable(String roomId, LocalDate startDate, LocalDate endDate) {
 
+        if (startDate.isAfter(endDate) || startDate.isEqual(endDate)) {
+            throw new IllegalArgumentException("Invalid date range: startDate must be before endDate");
+        }
+
+        Room room = roomRepository.findById(roomId)
+                .orElseThrow(() -> new IllegalArgumentException("Room not found"));
+
+        if (!room.isAvailable()) {
+            throw new IllegalArgumentException("Room is marked unavailable");
+        }
+
         List<Booking> existing = bookingRepository.findByRoomId(roomId);
 
         for (Booking b : existing) {
             boolean overlap = !(endDate.isBefore(b.getStartDate()) ||
-                    startDate.isAfter(b.getEndDate()));
-            if (overlap)
-                return false;
+                                startDate.isAfter(b.getEndDate()));
+            if (overlap) return false;
         }
 
         return true;
@@ -178,8 +191,8 @@ public class BookingService {
     // UPDATE BOOKING (ADMIN)
     // ---------------------------------------------------------
     public BookingResponse updateBooking(String bookingId,
-            String email,
-            Booking updatedBooking) {
+                                         String email,
+                                         Booking updatedBooking) {
 
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));

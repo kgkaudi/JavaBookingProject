@@ -4,12 +4,15 @@ import com.kostas.bookingproject.dto.BookingResponse;
 import com.kostas.bookingproject.models.Booking;
 import com.kostas.bookingproject.services.BookingService;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/bookings")
@@ -92,12 +95,31 @@ public class BookingController {
     // CHECK AVAILABILITY
     // ---------------------------------------------------------
     @GetMapping("/availability")
-    public boolean checkAvailability(
+    public ResponseEntity<?> checkAvailability(
             @RequestParam String roomId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
 
-        return bookingService.isRoomAvailable(roomId, startDate, endDate);
+        try {
+            boolean available = bookingService.isRoomAvailable(roomId, startDate, endDate);
+
+            if (!available) {
+                return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of(
+                        "available", false,
+                        "reason", "Room is already booked for the selected dates"));
+            }
+
+            return ResponseEntity.ok(Map.of("available", true));
+
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "available", false,
+                    "error", e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body(Map.of(
+                    "available", false,
+                    "error", "Unexpected server error"));
+        }
     }
 
     // ---------------------------------------------------------

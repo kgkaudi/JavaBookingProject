@@ -137,6 +137,126 @@ class BookingControllerIT {
     }
 
     // ------------------------------------------------------------
+    // UPDATE BOOKING
+    // ------------------------------------------------------------
+
+    @Test
+    void admin_can_update_booking() throws Exception {
+        Booking b = bookings.save(new Booking(
+                null,
+                user.getId(),
+                room.getId(),
+                "pending",
+                LocalDate.parse("2026-01-01"),
+                LocalDate.parse("2026-01-05"),
+                200.0
+        ));
+
+        mvc.perform(put("/api/bookings/" + b.getId())
+                        .header("Authorization", adminToken)
+                        .contentType("application/json")
+                        .content("""
+                                {
+                                  "roomId": "%s",
+                                  "userId": "%s",
+                                  "status": "confirmed",
+                                  "startDate": "2026-01-02",
+                                  "endDate": "2026-01-06"
+                                }
+                                """.formatted(room.getId(), user.getId())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("confirmed"))
+                .andExpect(jsonPath("$.startDate").value("2026-01-02"))
+                .andExpect(jsonPath("$.endDate").value("2026-01-06"));
+    }
+
+    @Test
+    void user_cannot_update_booking() throws Exception {
+        Booking b = bookings.save(new Booking(
+                null,
+                user.getId(),
+                room.getId(),
+                "pending",
+                LocalDate.parse("2026-01-01"),
+                LocalDate.parse("2026-01-05"),
+                200.0
+        ));
+
+        mvc.perform(put("/api/bookings/" + b.getId())
+                        .header("Authorization", userToken)
+                        .contentType("application/json")
+                        .content("""
+                                {
+                                  "roomId": "%s",
+                                  "userId": "%s",
+                                  "status": "confirmed",
+                                  "startDate": "2026-01-02",
+                                  "endDate": "2026-01-06"
+                                }
+                                """.formatted(room.getId(), user.getId())))
+                .andExpect(status().isForbidden());
+    }
+
+    // ------------------------------------------------------------
+    // AVAILABILITY CHECKS
+    // ------------------------------------------------------------
+
+    @Test
+    void availability_returns_true_for_free_room() throws Exception {
+        mvc.perform(get("/api/bookings/availability")
+                        .header("Authorization", userToken)
+                        .param("roomId", room.getId())
+                        .param("startDate", "2026-07-10")
+                        .param("endDate", "2026-07-12"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.available").value(true));
+    }
+
+    @Test
+    void availability_returns_false_for_overlap() throws Exception {
+        bookings.save(new Booking(
+                null,
+                user.getId(),
+                room.getId(),
+                "confirmed",
+                LocalDate.parse("2026-07-10"),
+                LocalDate.parse("2026-07-15"),
+                300.0
+        ));
+
+        mvc.perform(get("/api/bookings/availability")
+                        .header("Authorization", userToken)
+                        .param("roomId", room.getId())
+                        .param("startDate", "2026-07-12")
+                        .param("endDate", "2026-07-14"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.available").value(false))
+                .andExpect(jsonPath("$.reason").exists());
+    }
+
+    @Test
+    void availability_invalid_date_range() throws Exception {
+        mvc.perform(get("/api/bookings/availability")
+                        .header("Authorization", userToken)
+                        .param("roomId", room.getId())
+                        .param("startDate", "2026-07-20")
+                        .param("endDate", "2026-07-10"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").exists());
+    }
+
+    @Test
+    void availability_room_not_found() throws Exception {
+        mvc.perform(get("/api/bookings/availability")
+                        .header("Authorization", userToken)
+                        .param("roomId", "missing-room")
+                        .param("startDate", "2026-07-10")
+                        .param("endDate", "2026-07-12"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("Room not found"));
+    }
+
+    // ------------------------------------------------------------
     // EDGE CASES — BUSINESS LOGIC
     // ------------------------------------------------------------
 
