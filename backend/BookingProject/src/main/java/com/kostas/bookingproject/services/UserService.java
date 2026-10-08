@@ -1,5 +1,6 @@
 package com.kostas.bookingproject.services;
 
+import com.kostas.bookingproject.exceptions.ResourceNotFoundException;
 import com.kostas.bookingproject.dto.UpdateUserRequest;
 import com.kostas.bookingproject.models.User;
 import com.kostas.bookingproject.repositories.UserRepository;
@@ -31,7 +32,7 @@ public class UserService {
     // ---------------------------------------------------------
     public User getUserById(String id) {
         return users.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
     }
 
     // ---------------------------------------------------------
@@ -39,7 +40,7 @@ public class UserService {
     // ---------------------------------------------------------
     public User getUserByEmail(String email) {
         return users.findByEmail(email)
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
     }
 
     // ---------------------------------------------------------
@@ -68,7 +69,7 @@ public class UserService {
     // ---------------------------------------------------------
     public User updateUser(String userId, UpdateUserRequest request) {
         User existingUser = users.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         if (request.name() != null) {
             existingUser.setName(request.name());
@@ -95,7 +96,7 @@ public class UserService {
     // ---------------------------------------------------------
     public void deleteUser(String id) {
         if (!users.existsById(id)) {
-            throw new IllegalArgumentException("User not found");
+            throw new ResourceNotFoundException("User not found");
         }
         users.deleteById(id);
     }

@@ -1,5 +1,7 @@
 package com.kostas.bookingproject.services;
 
+import com.kostas.bookingproject.exceptions.ResourceNotFoundException;
+import com.kostas.bookingproject.exceptions.ForbiddenOperationException;
 import com.kostas.bookingproject.dto.BookingResponse;
 import com.kostas.bookingproject.dto.UpdateBookingRequest;
 import com.kostas.bookingproject.models.Booking;
@@ -72,7 +74,7 @@ public class BookingService {
     public BookingResponse toResponse(Booking booking) {
 
         Room room = roomRepository.findById(booking.getRoomId())
-                .orElseThrow(() -> new IllegalArgumentException("Room not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Room not found"));
 
         return new BookingResponse(
                 booking.getId(),
@@ -91,10 +93,10 @@ public class BookingService {
     public Booking createBooking(String email, String roomId, LocalDate start, LocalDate end) {
 
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         Room room = roomRepository.findById(roomId)
-                .orElseThrow(() -> new IllegalArgumentException("Room not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Room not found"));
 
         if (!room.isAvailable()) {
             throw new IllegalArgumentException("Room is marked unavailable");
@@ -136,14 +138,14 @@ public class BookingService {
     public void deleteBooking(String bookingId, String email) {
 
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         if (!user.getRoles().contains("ROLE_ADMIN")) {
-            throw new RuntimeException("Only admin can delete bookings");
+            throw new ForbiddenOperationException("Only admin can delete bookings");
         }
 
         Booking booking = bookingRepository.findById(bookingId)
-                .orElseThrow(() -> new IllegalArgumentException("Booking not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Booking not found"));
 
         bookingRepository.delete(booking);
     }
@@ -165,7 +167,7 @@ public class BookingService {
 
         User user = userRepository.findByEmail(userIdOrEmail)
                 .orElseGet(() -> userRepository.findById(userIdOrEmail)
-                        .orElseThrow(() -> new IllegalArgumentException("User not found")));
+                        .orElseThrow(() -> new ResourceNotFoundException("User not found")));
 
         return bookingRepository.findByUserId(user.getId())
                 .stream()
@@ -186,16 +188,16 @@ public class BookingService {
     public BookingResponse getBookingById(String bookingId, String email) {
 
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         Booking booking = bookingRepository.findById(bookingId)
-                .orElseThrow(() -> new IllegalArgumentException("Booking not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Booking not found"));
 
         boolean isAdmin = user.getRoles().contains("ROLE_ADMIN");
         boolean isOwner = booking.getUserId().equals(user.getId());
 
         if (!isAdmin && !isOwner) {
-            throw new RuntimeException("Not allowed to view this booking");
+            throw new ForbiddenOperationException("Not allowed to view this booking");
         }
 
         return toResponse(booking);
@@ -211,7 +213,7 @@ public class BookingService {
         }
 
         Room room = roomRepository.findById(roomId)
-                .orElseThrow(() -> new IllegalArgumentException("Room not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Room not found"));
 
         if (!room.isAvailable()) {
             throw new IllegalArgumentException("Room is marked unavailable");
@@ -228,17 +230,17 @@ public class BookingService {
                                          UpdateBookingRequest request) {
 
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         if (!user.getRoles().contains("ROLE_ADMIN")) {
-            throw new RuntimeException("Only admin can update bookings");
+            throw new ForbiddenOperationException("Only admin can update bookings");
         }
 
         Booking booking = bookingRepository.findById(bookingId)
-                .orElseThrow(() -> new IllegalArgumentException("Booking not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Booking not found"));
 
         Room room = roomRepository.findById(booking.getRoomId())
-                .orElseThrow(() -> new IllegalArgumentException("Room not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Room not found"));
 
         String status = request.status() != null ? request.status() : booking.getStatus();
         LocalDate start = request.startDate() != null ? request.startDate() : booking.getStartDate();
@@ -284,16 +286,16 @@ public class BookingService {
     public void cancelBooking(String bookingId, String email) {
 
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         Booking booking = bookingRepository.findById(bookingId)
-                .orElseThrow(() -> new IllegalArgumentException("Booking not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Booking not found"));
 
         boolean isAdmin = user.getRoles().contains("ROLE_ADMIN");
         boolean isOwner = booking.getUserId().equals(user.getId());
 
         if (!isAdmin && !isOwner) {
-            throw new RuntimeException("Not allowed to cancel this booking");
+            throw new ForbiddenOperationException("Not allowed to cancel this booking");
         }
 
         booking.setStatus(STATUS_CANCELLED);

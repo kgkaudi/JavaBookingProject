@@ -252,6 +252,29 @@ backend/BookingProject
 
 ---
 
+---
+
+## ⚠️ Error format
+
+Every failing request returns JSON in the same shape:
+
+```json
+{
+  "timestamp": "2026-10-08T10:15:30Z",
+  "status": 400,
+  "error": "Bad Request",
+  "message": "Validation failed",
+  "path": "/api/auth/signup",
+  "fieldErrors": { "email": "Email must be a valid address" }
+}
+```
+
+`fieldErrors` only appears for validation failures. Status codes: `400` bad input, `401` not authenticated,
+`403` not allowed, `404` not found, `409` conflict (overlapping booking, duplicate email), `500` unexpected
+(details are logged server-side, never returned).
+
+Passwords must be 8–72 characters.
+
 ## 📝 License
 
 This project is part of your personal development portfolio.  

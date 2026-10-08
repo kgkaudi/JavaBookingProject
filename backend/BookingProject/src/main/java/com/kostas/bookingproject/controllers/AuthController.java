@@ -6,9 +6,14 @@ import com.kostas.bookingproject.security.AuthService;
 import com.kostas.bookingproject.security.AuthRequest;
 import com.kostas.bookingproject.security.TokenBlacklist;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+/**
+ * Errors are translated centrally by GlobalExceptionHandler
+ * (validation -> 400, duplicate email -> 409, bad credentials -> 400, ...).
+ */
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
@@ -25,26 +30,16 @@ public class AuthController {
     // SIGNUP
     // ---------------------------------------------------------
     @PostMapping("/signup")
-    public ResponseEntity<?> signup(@RequestBody SignupRequest request) {
-        try {
-            AuthResponse response = authService.signup(request);   // MUST generate email-based token
-            return ResponseEntity.ok(response);
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
+    public ResponseEntity<AuthResponse> signup(@Valid @RequestBody SignupRequest request) {
+        return ResponseEntity.ok(authService.signup(request));
     }
 
     // ---------------------------------------------------------
     // LOGIN
     // ---------------------------------------------------------
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody AuthRequest request) {
-        try {
-            AuthResponse response = authService.login(request);    // MUST generate email-based token
-            return ResponseEntity.ok(response);
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
+    public ResponseEntity<AuthResponse> login(@Valid @RequestBody AuthRequest request) {
+        return ResponseEntity.ok(authService.login(request));
     }
 
     // ---------------------------------------------------------
@@ -55,7 +50,7 @@ public class AuthController {
         String authHeader = request.getHeader("Authorization");
 
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            return ResponseEntity.badRequest().body("No token provided");
+            throw new IllegalArgumentException("No token provided");
         }
 
         String token = authHeader.substring(7);

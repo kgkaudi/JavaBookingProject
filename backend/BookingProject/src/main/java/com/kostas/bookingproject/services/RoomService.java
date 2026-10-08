@@ -1,5 +1,6 @@
 package com.kostas.bookingproject.services;
 
+import com.kostas.bookingproject.exceptions.ResourceNotFoundException;
 import com.kostas.bookingproject.models.Room;
 import com.kostas.bookingproject.repositories.RoomRepository;
 import org.springframework.stereotype.Service;
@@ -31,7 +32,7 @@ public class RoomService {
     public Room updateRoom(String roomId, Room updatedRoom) {
 
         Room existing = roomRepository.findById(roomId)
-                .orElseThrow(() -> new IllegalArgumentException("Room not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Room not found"));
 
         existing.setRoomNumber(updatedRoom.getRoomNumber());
         existing.setType(updatedRoom.getType());
@@ -47,7 +48,7 @@ public class RoomService {
     // ---------------------------------------------------------
     public void deleteRoom(String roomId) {
         if (!roomRepository.existsById(roomId)) {
-            throw new IllegalArgumentException("Room not found");
+            throw new ResourceNotFoundException("Room not found");
         }
         roomRepository.deleteById(roomId);
     }
@@ -64,7 +65,7 @@ public class RoomService {
     // ---------------------------------------------------------
     public Room getRoomById(String roomId) {
         return roomRepository.findById(roomId)
-                .orElseThrow(() -> new IllegalArgumentException("Room not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Room not found"));
     }
 
     // ---------------------------------------------------------

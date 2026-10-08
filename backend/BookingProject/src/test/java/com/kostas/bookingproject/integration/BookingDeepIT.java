@@ -174,7 +174,7 @@ class BookingDeepIT {
                         .param("roomId", room.getId())
                         .param("startDate", "2026-01-03")
                         .param("endDate", "2026-01-07"))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isConflict());
     }
 
     @Test

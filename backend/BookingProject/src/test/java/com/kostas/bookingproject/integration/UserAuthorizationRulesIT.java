@@ -1,6 +1,7 @@
 package com.kostas.bookingproject.integration;
 
 import com.kostas.bookingproject.controllers.UserController;
+import com.kostas.bookingproject.exceptions.ResourceNotFoundException;
 import com.kostas.bookingproject.models.User;
 import com.kostas.bookingproject.repositories.UserRepository;
 import com.kostas.bookingproject.security.JwtFilter;
@@ -20,6 +21,8 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.List;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -115,5 +118,54 @@ class UserAuthorizationRulesIT {
         mvc.perform(get("/api/users/u1"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.password").doesNotExist());
+    }
+
+    // --- profile update: only self or admin ------------------------------
+
+    @Test
+    @WithMockUser(roles = "USER")
+    void user_cannot_update_someone_elses_profile() throws Exception {
+        // @WithMockUser's principal is not our CustomUserDetails, so "self" can never match
+        mvc.perform(put("/api/users/u1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"Hacked\",\"roles\":[\"ROLE_ADMIN\"]}"))
+                .andExpect(status().isForbidden());
+        verify(userService, never()).updateUser(any(), any());
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void admin_update_ignores_roles_in_body() throws Exception {
+        when(userService.updateUser(eq("u1"), any())).thenReturn(sample());
+
+        mvc.perform(put("/api/users/u1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"Kostas\",\"roles\":[\"ROLE_ADMIN\"]}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.roles[0]").value("ROLE_USER"));
+    }
+
+    // --- error handling / validation -------------------------------------
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void unknown_user_returns_404_json() throws Exception {
+        when(userService.getUserById("zzz")).thenThrow(new ResourceNotFoundException("User not found"));
+
+        mvc.perform(get("/api/users/zzz"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.status").value(404))
+                .andExpect(jsonPath("$.message").value("User not found"));
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void create_user_with_invalid_email_returns_400_with_field_errors() throws Exception {
+        mvc.perform(post("/api/users")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"X\",\"email\":\"not-an-email\",\"password\":\"longenough1\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.fieldErrors.email").exists());
+        verify(userService, never()).createUser(any());
     }
 }

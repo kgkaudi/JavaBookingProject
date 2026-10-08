@@ -3,6 +3,7 @@ package com.kostas.bookingproject.controllers;
 import com.kostas.bookingproject.security.RequestResetDTO;
 import com.kostas.bookingproject.security.ConfirmResetDTO;
 import com.kostas.bookingproject.services.PasswordResetService;
+import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -16,13 +17,13 @@ public class PasswordResetController {
     }
 
     @PostMapping("/request-reset")
-    public String requestReset(@RequestBody RequestResetDTO dto) {
+    public String requestReset(@Valid @RequestBody RequestResetDTO dto) {
         resetService.requestReset(dto.getEmail());
         return "Reset link sent";
     }
 
     @PostMapping("/reset-password")
-    public String resetPassword(@RequestBody ConfirmResetDTO dto) {
+    public String resetPassword(@Valid @RequestBody ConfirmResetDTO dto) {
         resetService.confirmReset(dto.getToken(), dto.getNewPassword());
         return "Password updated";
     }

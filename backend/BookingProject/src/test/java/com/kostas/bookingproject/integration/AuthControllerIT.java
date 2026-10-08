@@ -47,7 +47,7 @@ class AuthControllerIT {
         SignupRequest req = new SignupRequest(
                 "Kostas",
                 "k@k.com",
-                "123456",
+                "Passw0rd123",
                 "6900000000"
         );
 
@@ -103,7 +103,7 @@ class AuthControllerIT {
 
     @Test
     void signup_missing_email() throws Exception {
-        SignupRequest req = new SignupRequest("Kostas", null, "123456", "6900000000");
+        SignupRequest req = new SignupRequest("Kostas", null, "Passw0rd123", "6900000000");
 
         mvc.perform(post("/api/auth/signup")
                         .contentType("application/json")
@@ -123,7 +123,7 @@ class AuthControllerIT {
 
     @Test
     void signup_missing_name() throws Exception {
-        SignupRequest req = new SignupRequest(null, "k@k.com", "123456", "6900000000");
+        SignupRequest req = new SignupRequest(null, "k@k.com", "Passw0rd123", "6900000000");
 
         mvc.perform(post("/api/auth/signup")
                         .contentType("application/json")
@@ -133,7 +133,7 @@ class AuthControllerIT {
 
     @Test
     void signup_missing_phone() throws Exception {
-        SignupRequest req = new SignupRequest("Kostas", "k@k.com", "123456", null);
+        SignupRequest req = new SignupRequest("Kostas", "k@k.com", "Passw0rd123", null);
 
         mvc.perform(post("/api/auth/signup")
                         .contentType("application/json")
@@ -185,12 +185,12 @@ class AuthControllerIT {
     void signup_duplicate_email() throws Exception {
         users.save(new User(null, "Kostas", "k@k.com", "ENC", "6900000000", List.of("ROLE_USER")));
 
-        SignupRequest req = new SignupRequest("Kostas", "k@k.com", "123456", "6900000000");
+        SignupRequest req = new SignupRequest("Kostas", "k@k.com", "Passw0rd123", "6900000000");
 
         mvc.perform(post("/api/auth/signup")
                         .contentType("application/json")
                         .content(mapper.writeValueAsString(req)))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isConflict());
     }
 
     @Test

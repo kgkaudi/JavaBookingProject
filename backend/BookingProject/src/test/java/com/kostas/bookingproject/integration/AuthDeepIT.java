@@ -45,7 +45,7 @@ class AuthDeepIT {
     void signup_then_login_then_access_protected_endpoint() throws Exception {
 
         // 1) SIGNUP
-        SignupRequest req = new SignupRequest("Kostas", "k@k.com", "123456", "6900000000");
+        SignupRequest req = new SignupRequest("Kostas", "k@k.com", "Passw0rd123", "6900000000");
 
         mvc.perform(post("/api/auth/signup")
                         .contentType("application/json")
@@ -54,7 +54,7 @@ class AuthDeepIT {
                 .andExpect(jsonPath("$.id").exists());
 
         // 2) LOGIN
-        AuthRequest login = new AuthRequest("k@k.com", "123456");
+        AuthRequest login = new AuthRequest("k@k.com", "Passw0rd123");
 
         String tokenJson = mvc.perform(post("/api/auth/login")
                         .contentType("application/json")
@@ -104,7 +104,7 @@ class AuthDeepIT {
         mvc.perform(post("/api/auth/signup")
                         .contentType("application/json")
                         .content(mapper.writeValueAsString(req)))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isConflict());
     }
 
     // ------------------------------------------------------------
