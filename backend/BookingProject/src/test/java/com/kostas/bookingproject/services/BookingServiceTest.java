@@ -1,5 +1,6 @@
 package com.kostas.bookingproject.services;
 
+import static org.mockito.ArgumentMatchers.any;
 import com.kostas.bookingproject.dto.UpdateBookingRequest;
 import com.kostas.bookingproject.models.Booking;
 import com.kostas.bookingproject.models.Room;
@@ -473,5 +474,40 @@ class BookingServiceTest {
 
         assertEquals("cancelled", b.getStatus());
         verify(bookings).save(b);
+    }
+
+    // ---------------------------------------------------------
+    // NO N+1 ROOM LOOKUPS
+    // ---------------------------------------------------------
+    @Test
+    void getAllBookings_loadsRoomsWithSingleQuery() {
+        Room r2 = new Room("r2", 202, "double", 2, 80.0, true);
+
+        when(bookings.findAll()).thenReturn(List.of(
+                new Booking("b1", "u1", "r1", "confirmed",
+                        LocalDate.parse("2026-01-01"), LocalDate.parse("2026-01-03"), 100.0),
+                new Booking("b2", "u1", "r1", "confirmed",
+                        LocalDate.parse("2026-02-01"), LocalDate.parse("2026-02-03"), 100.0),
+                new Booking("b3", "u2", "r2", "confirmed",
+                        LocalDate.parse("2026-03-01"), LocalDate.parse("2026-03-03"), 160.0)));
+        when(rooms.findAllById(any())).thenReturn(List.of(room, r2));
+
+        var result = service.getAllBookings();
+
+        assertEquals(3, result.size());
+        assertEquals(101, result.get(0).getRoomNumber());
+        assertEquals(202, result.get(2).getRoomNumber());
+        verify(rooms, times(1)).findAllById(any());
+        verify(rooms, never()).findById(any());
+    }
+
+    @Test
+    void getAllBookings_missingRoom_throwsNotFound() {
+        when(bookings.findAll()).thenReturn(List.of(
+                new Booking("b1", "u1", "gone", "confirmed",
+                        LocalDate.parse("2026-01-01"), LocalDate.parse("2026-01-03"), 100.0)));
+        when(rooms.findAllById(any())).thenReturn(List.of());
+
+        assertThrows(IllegalArgumentException.class, () -> service.getAllBookings());
     }
 }

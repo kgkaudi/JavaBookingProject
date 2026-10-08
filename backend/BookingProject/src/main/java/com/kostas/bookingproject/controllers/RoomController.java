@@ -2,6 +2,7 @@ package com.kostas.bookingproject.controllers;
 
 import com.kostas.bookingproject.models.Room;
 import com.kostas.bookingproject.services.RoomService;
+import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -17,12 +18,12 @@ public class RoomController {
     }
 
     @PostMapping
-    public Room createRoom(@RequestBody Room room) {
+    public Room createRoom(@Valid @RequestBody Room room) {
         return roomService.createRoom(room);
     }
 
     @PutMapping("/{roomId}")
-    public Room updateRoom(@PathVariable String roomId, @RequestBody Room room) {
+    public Room updateRoom(@PathVariable String roomId, @Valid @RequestBody Room room) {
         return roomService.updateRoom(roomId, room);
     }
 

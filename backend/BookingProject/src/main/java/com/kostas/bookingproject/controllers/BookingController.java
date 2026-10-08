@@ -75,10 +75,7 @@ public class BookingController {
     // ---------------------------------------------------------
     @GetMapping("/room/{roomId}")
     public List<BookingResponse> getBookingsForRoom(@PathVariable String roomId) {
-        return bookingService.getBookingsForRoom(roomId)
-                .stream()
-                .map(bookingService::toResponse)
-                .toList();
+        return bookingService.toResponses(bookingService.getBookingsForRoom(roomId));
     }
 
     // ---------------------------------------------------------

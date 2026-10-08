@@ -1,5 +1,6 @@
 package com.kostas.bookingproject.services;
 
+import static org.mockito.ArgumentMatchers.any;
 import com.kostas.bookingproject.dto.UpdateUserRequest;
 import com.kostas.bookingproject.models.User;
 import com.kostas.bookingproject.repositories.UserRepository;
@@ -277,5 +278,23 @@ class UserServiceTest {
 
         assertThrows(IllegalArgumentException.class,
                 () -> userService.demoteToUser("a1"));
+    }
+
+    // ---------------------------------------------------------
+    // EMAIL NORMALISATION
+    // ---------------------------------------------------------
+    @Test
+    void createUser_emailIsTrimmedAndLowerCased() {
+        User newUser = new User();
+        newUser.setEmail("  New@Test.COM ");
+        newUser.setPassword("plain123");
+
+        when(users.findByEmail("new@test.com")).thenReturn(Optional.empty());
+        when(passwordEncoder.encode("plain123")).thenReturn("ENCODED");
+        when(users.save(any(User.class))).thenAnswer(i -> i.getArgument(0));
+
+        User result = userService.createUser(newUser);
+
+        assertEquals("new@test.com", result.getEmail());
     }
 }

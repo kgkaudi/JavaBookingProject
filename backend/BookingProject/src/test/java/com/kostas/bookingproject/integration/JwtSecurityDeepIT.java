@@ -19,6 +19,7 @@ import java.util.List;
 import com.kostas.bookingproject.config.MockMvcConfig;
 import com.kostas.bookingproject.repositories.UserRepository;
 import com.kostas.bookingproject.security.JwtUtil;
+import com.kostas.bookingproject.security.TestTokens;
 import com.kostas.bookingproject.models.User;
 
 @SpringBootTest
@@ -91,7 +92,7 @@ class JwtSecurityDeepIT {
 
     @Test
     void expired_token_forbidden() throws Exception {
-        String expired = "Bearer " + jwt.generateExpiredToken(user.getId(), List.of("ROLE_USER"));
+        String expired = "Bearer " + TestTokens.expiredToken(user.getId(), List.of("ROLE_USER"));
 
         mvc.perform(get("/api/users/me")
                         .header("Authorization", expired))
@@ -120,7 +121,7 @@ class JwtSecurityDeepIT {
 
     @Test
     void token_missing_roles_forbidden() throws Exception {
-        String noRoles = "Bearer " + jwt.generateTokenWithoutRoles(user.getId());
+        String noRoles = "Bearer " + TestTokens.tokenWithoutRoles(user.getId());
 
         mvc.perform(get("/api/users/me")
                         .header("Authorization", noRoles))

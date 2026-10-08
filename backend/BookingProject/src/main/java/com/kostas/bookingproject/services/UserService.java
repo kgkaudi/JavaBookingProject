@@ -48,6 +48,8 @@ public class UserService {
     // ---------------------------------------------------------
     public User createUser(User newUser) {
 
+        newUser.setEmail(normalize(newUser.getEmail()));
+
         if (users.findByEmail(newUser.getEmail()).isPresent()) {
             throw new IllegalArgumentException("Email already exists");
         }
@@ -75,13 +77,14 @@ public class UserService {
             existingUser.setName(request.name());
         }
 
-        if (request.email() != null && !request.email().equalsIgnoreCase(existingUser.getEmail())) {
-            users.findByEmail(request.email())
+        String newEmail = normalize(request.email());
+        if (newEmail != null && !newEmail.equals(existingUser.getEmail())) {
+            users.findByEmail(newEmail)
                     .filter(other -> !other.getId().equals(existingUser.getId()))
                     .ifPresent(other -> {
                         throw new IllegalArgumentException("Email already exists");
                     });
-            existingUser.setEmail(request.email());
+            existingUser.setEmail(newEmail);
         }
 
         if (request.phone() != null) {
@@ -114,5 +117,9 @@ public class UserService {
         User user = getUserById(id);
         user.setRoles(List.of("ROLE_USER"));
         return users.save(user);
+    }
+
+    private static String normalize(String email) {
+        return email == null ? null : email.trim().toLowerCase(java.util.Locale.ROOT);
     }
 }

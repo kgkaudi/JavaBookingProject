@@ -1,5 +1,6 @@
 package com.kostas.bookingproject.services;
 
+import static org.mockito.ArgumentMatchers.any;
 import com.kostas.bookingproject.models.Room;
 import com.kostas.bookingproject.repositories.RoomRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -245,5 +246,42 @@ class RoomServiceTest {
         List<Room> result = roomService.getRoomsByPriceRange(10, 20);
 
         assertTrue(result.isEmpty());
+    }
+
+    // ---------------------------------------------------------
+    // DUPLICATE ROOM NUMBERS
+    // ---------------------------------------------------------
+    @Test
+    void createRoom_duplicateRoomNumber_rejected() {
+        Room dup = new Room(null, 101, "double", 2, 120.0, true);
+        when(roomRepository.findByRoomNumber(101)).thenReturn(Optional.of(existing));
+
+        assertThrows(IllegalStateException.class, () -> roomService.createRoom(dup));
+        verify(roomRepository, never()).save(any());
+    }
+
+    @Test
+    void updateRoom_numberUsedByAnotherRoom_rejected() {
+        Room other = new Room("r2", 202, "single", 1, 50.0, true);
+        Room update = new Room(null, 202, "single", 1, 50.0, true);
+
+        when(roomRepository.findById("r1")).thenReturn(Optional.of(existing));
+        when(roomRepository.findByRoomNumber(202)).thenReturn(Optional.of(other));
+
+        assertThrows(IllegalStateException.class, () -> roomService.updateRoom("r1", update));
+        verify(roomRepository, never()).save(any());
+    }
+
+    @Test
+    void updateRoom_keepingOwnNumber_isAllowed() {
+        Room update = new Room(null, 101, "suite", 2, 150.0, true);
+
+        when(roomRepository.findById("r1")).thenReturn(Optional.of(existing));
+        when(roomRepository.findByRoomNumber(101)).thenReturn(Optional.of(existing));
+        when(roomRepository.save(any(Room.class))).thenAnswer(i -> i.getArgument(0));
+
+        Room result = roomService.updateRoom("r1", update);
+
+        assertEquals("suite", result.getType());
     }
 }

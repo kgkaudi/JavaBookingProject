@@ -178,7 +178,7 @@ class RoomControllerIT {
         mvc.perform(post("/api/rooms")
                         .contentType("application/json")
                         .content(mapper.writeValueAsString(r)))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isConflict());
     }
 
     @Test

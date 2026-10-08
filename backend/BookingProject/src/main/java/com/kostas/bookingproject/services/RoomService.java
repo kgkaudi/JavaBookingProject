@@ -23,6 +23,9 @@ public class RoomService {
         if (room.getRoomNumber() <= 0) {
             throw new IllegalArgumentException("Room number must be positive");
         }
+        if (roomRepository.findByRoomNumber(room.getRoomNumber()).isPresent()) {
+            throw new IllegalStateException("Room number already exists");
+        }
         return roomRepository.save(room);
     }
 
@@ -33,6 +36,12 @@ public class RoomService {
 
         Room existing = roomRepository.findById(roomId)
                 .orElseThrow(() -> new ResourceNotFoundException("Room not found"));
+
+        roomRepository.findByRoomNumber(updatedRoom.getRoomNumber())
+                .filter(other -> !other.getId().equals(existing.getId()))
+                .ifPresent(other -> {
+                    throw new IllegalStateException("Room number already exists");
+                });
 
         existing.setRoomNumber(updatedRoom.getRoomNumber());
         existing.setType(updatedRoom.getType());

@@ -1,5 +1,6 @@
 package com.kostas.bookingproject.security;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -29,14 +30,14 @@ public class SecurityConfig {
     }
 
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain filterChain(HttpSecurity http, CorsConfigurationSource corsConfigurationSource) throws Exception {
 
         http
             // ---------------------------------------------------------
             // CORE SECURITY SETTINGS
             // ---------------------------------------------------------
             .csrf(csrf -> csrf.disable())
-            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+            .cors(cors -> cors.configurationSource(corsConfigurationSource))
             .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
             // ---------------------------------------------------------
@@ -113,18 +114,18 @@ public class SecurityConfig {
     // CORS CONFIGURATION
     // ---------------------------------------------------------
     @Bean
-    public CorsConfigurationSource corsConfigurationSource() {
+    public CorsConfigurationSource corsConfigurationSource(
+            @Value("${app.cors.allowed-origins:http://localhost:5173}") List<String> allowedOrigins) {
+
         CorsConfiguration config = new CorsConfiguration();
 
-        // Explicit origin for React frontend
-        config.setAllowedOrigins(List.of("http://localhost:5173"));
+        // Origins come from config (comma separated) so production can set its real frontend URL
+        config.setAllowedOrigins(allowedOrigins);
 
-        // Allowed methods and headers
-        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        // PATCH is required for "cancel booking"; without it browsers block the preflight request
+        config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("Authorization", "Content-Type"));
         config.setExposedHeaders(List.of("Authorization"));
-
-        // Allow credentials (cookies, headers)
         config.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();

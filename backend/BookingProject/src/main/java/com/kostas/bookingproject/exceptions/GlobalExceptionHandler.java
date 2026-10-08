@@ -3,6 +3,7 @@ package com.kostas.bookingproject.exceptions;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
@@ -49,6 +50,12 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     @ExceptionHandler(IllegalStateException.class)
     public ResponseEntity<Object> conflict(IllegalStateException ex, HttpServletRequest req) {
         return build(HttpStatus.CONFLICT, ex.getMessage(), req.getRequestURI(), null);
+    }
+
+    @ExceptionHandler(DuplicateKeyException.class)
+    public ResponseEntity<Object> duplicateKey(DuplicateKeyException ex, HttpServletRequest req) {
+        // raised by the database unique indexes (e.g. two signups with the same email at once)
+        return build(HttpStatus.CONFLICT, "Resource already exists", req.getRequestURI(), null);
     }
 
     @ExceptionHandler(ForbiddenOperationException.class)

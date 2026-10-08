@@ -28,6 +28,8 @@ public class AuthService {
     // ---------------------------------------------------------
     public AuthResponse signup(SignupRequest request) {
 
+        request.setEmail(normalize(request.getEmail()));
+
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new IllegalStateException("Email already in use");
         }
@@ -51,6 +53,8 @@ public class AuthService {
     // ---------------------------------------------------------
     public AuthResponse login(AuthRequest request) {
 
+        request.setEmail(normalize(request.getEmail()));
+
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new IllegalArgumentException("Invalid credentials"));
 
@@ -62,5 +66,9 @@ public class AuthService {
         String token = jwtUtil.generateToken(user.getEmail(), user.getRoles());
 
         return new AuthResponse(token, user.getRoles());
+    }
+
+    private static String normalize(String email) {
+        return email == null ? null : email.trim().toLowerCase(java.util.Locale.ROOT);
     }
 }

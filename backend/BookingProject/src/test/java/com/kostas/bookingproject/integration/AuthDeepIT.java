@@ -18,6 +18,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import com.kostas.bookingproject.config.MockMvcConfig;
 import com.kostas.bookingproject.repositories.UserRepository;
 import com.kostas.bookingproject.security.JwtUtil;
+import com.kostas.bookingproject.security.TestTokens;
 import com.kostas.bookingproject.security.SignupRequest;
 import com.kostas.bookingproject.security.AuthRequest;
 import com.kostas.bookingproject.models.User;
@@ -155,7 +156,7 @@ class AuthDeepIT {
         User u = users.save(new User(null, "Kostas", "k@k.com", "ENC", "6900000000", List.of("ROLE_USER")));
 
         // Create token without roles
-        String token = jwt.generateTokenWithoutRoles(u.getId());
+        String token = TestTokens.tokenWithoutRoles(u.getId());
 
         mvc.perform(get("/api/users/me")
                         .header("Authorization", "Bearer " + token))

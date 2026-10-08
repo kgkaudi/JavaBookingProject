@@ -84,6 +84,7 @@ Secrets are **not** stored in the repo. Set these before starting the app:
 | `SEED_ENABLED` | no | `true` to create demo admin/users/rooms on startup (default `false`) |
 | `SEED_ADMIN_PASSWORD` | if seeding | Password for `admin@booking.com` |
 | `SEED_TEST_USER_PASSWORD` | if seeding | Password for `user1@test.com` / `user2@test.com` |
+| `CORS_ALLOWED_ORIGINS` | no | Comma separated frontend origins allowed by CORS (default `http://localhost:5173`) |
 
 Local development example:
 

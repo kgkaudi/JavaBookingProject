@@ -46,37 +46,6 @@ public class JwtUtil {
     }
 
     // ---------------------------------------------------------
-    // GENERATE EXPIRED TOKEN (FOR TESTING)
-    // ---------------------------------------------------------
-    public String generateExpiredToken(String userId, List<String> roles) {
-        Date now = new Date();
-        Date expired = new Date(now.getTime() - 1000); // expired 1 second ago
-
-        return Jwts.builder()
-                .setSubject(userId)
-                .claim("roles", roles)
-                .setIssuedAt(now)
-                .setExpiration(expired)
-                .signWith(key, SignatureAlgorithm.HS256)
-                .compact();
-    }
-
-    // ---------------------------------------------------------
-    // GENERATE TOKEN WITHOUT ROLES (FOR TESTING)
-    // ---------------------------------------------------------
-    public String generateTokenWithoutRoles(String userId) {
-        Date now = new Date();
-        Date expiry = new Date(now.getTime() + expiration);
-
-        return Jwts.builder()
-                .setSubject(userId)
-                .setIssuedAt(now)
-                .setExpiration(expiry)
-                .signWith(key, SignatureAlgorithm.HS256)
-                .compact();
-    }
-
-    // ---------------------------------------------------------
     // VALIDATE TOKEN
     // ---------------------------------------------------------
     public Claims validate(String token) {

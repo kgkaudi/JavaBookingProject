@@ -14,6 +14,9 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import java.util.Set;
 
 @Service
@@ -87,6 +90,30 @@ public class BookingService {
         );
     }
 
+    /** Maps many bookings with ONE room query instead of one query per booking. */
+    public List<BookingResponse> toResponses(List<Booking> bookingList) {
+
+        List<String> roomIds = bookingList.stream().map(Booking::getRoomId).distinct().toList();
+
+        Map<String, Room> roomsById = roomRepository.findAllById(roomIds).stream()
+                .collect(Collectors.toMap(Room::getId, Function.identity()));
+
+        return bookingList.stream().map(b -> {
+            Room room = roomsById.get(b.getRoomId());
+            if (room == null) {
+                throw new ResourceNotFoundException("Room not found");
+            }
+            return new BookingResponse(
+                    b.getId(),
+                    room.getRoomNumber(),
+                    b.getUserId(),
+                    b.getStatus(),
+                    b.getStartDate(),
+                    b.getEndDate(),
+                    b.getTotalPrice());
+        }).toList();
+    }
+
     // ---------------------------------------------------------
     // CREATE BOOKING
     // ---------------------------------------------------------
@@ -154,10 +181,7 @@ public class BookingService {
     // GET ALL BOOKINGS (ADMIN)
     // ---------------------------------------------------------
     public List<BookingResponse> getAllBookings() {
-        return bookingRepository.findAll()
-                .stream()
-                .map(this::toResponse)
-                .toList();
+        return toResponses(bookingRepository.findAll());
     }
 
     // ---------------------------------------------------------
@@ -169,10 +193,7 @@ public class BookingService {
                 .orElseGet(() -> userRepository.findById(userIdOrEmail)
                         .orElseThrow(() -> new ResourceNotFoundException("User not found")));
 
-        return bookingRepository.findByUserId(user.getId())
-                .stream()
-                .map(this::toResponse)
-                .toList();
+        return toResponses(bookingRepository.findByUserId(user.getId()));
     }
 
     // ---------------------------------------------------------
