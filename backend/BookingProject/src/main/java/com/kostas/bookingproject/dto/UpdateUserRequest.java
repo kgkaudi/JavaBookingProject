@@ -10,4 +10,3 @@ public record UpdateUserRequest(
         String email,
         String phone) {
 }
-

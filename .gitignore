@@ -90,3 +90,4 @@ docker-compose.prod.yml
 *.zip
 *.tar
 *.gz
+backend/BookingProject/src/main/resources/application-local.properties

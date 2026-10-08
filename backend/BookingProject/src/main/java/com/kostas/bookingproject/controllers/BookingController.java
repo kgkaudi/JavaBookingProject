@@ -1,6 +1,7 @@
 package com.kostas.bookingproject.controllers;
 
 import com.kostas.bookingproject.dto.BookingResponse;
+import com.kostas.bookingproject.dto.UpdateBookingRequest;
 import com.kostas.bookingproject.models.Booking;
 import com.kostas.bookingproject.services.BookingService;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -129,12 +130,12 @@ public class BookingController {
     public BookingResponse updateBooking(
             @PathVariable String bookingId,
             @AuthenticationPrincipal UserDetails userDetails,
-            @RequestBody Booking updatedBooking) {
+            @RequestBody UpdateBookingRequest request) {
 
         return bookingService.updateBooking(
                 bookingId,
                 userDetails.getUsername(),
-                updatedBooking);
+                request);
     }
 
     // ---------------------------------------------------------
