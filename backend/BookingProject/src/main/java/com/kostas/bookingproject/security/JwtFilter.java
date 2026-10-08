@@ -20,19 +20,20 @@ public class JwtFilter extends OncePerRequestFilter {
 
     private final JwtUtil jwtUtil;
     private final UserRepository userRepository;
+    private final TokenBlacklist tokenBlacklist;
 
     // Public endpoints that must bypass JWT validation
     private static final List<String> PUBLIC_ENDPOINTS = List.of(
             "/api/auth/login",
             "/api/auth/signup",
             "/api/auth/request-reset",
-            "/api/auth/reset-password",
-            "/api/auth/logout"
+            "/api/auth/reset-password"
     );
 
-    public JwtFilter(JwtUtil jwtUtil, UserRepository userRepository) {
+    public JwtFilter(JwtUtil jwtUtil, UserRepository userRepository, TokenBlacklist tokenBlacklist) {
         this.jwtUtil = jwtUtil;
         this.userRepository = userRepository;
+        this.tokenBlacklist = tokenBlacklist;
     }
 
     @Override
@@ -65,6 +66,13 @@ public class JwtFilter extends OncePerRequestFilter {
         // Validate JWT token
         // ---------------------------------------------------------
         String token = header.substring(7);
+
+        // Logged-out tokens are rejected even though their signature is still valid
+        if (tokenBlacklist.isBlacklisted(token)) {
+            SecurityContextHolder.clearContext();
+            filterChain.doFilter(request, response);
+            return;
+        }
 
         try {
             Claims claims = jwtUtil.validate(token);

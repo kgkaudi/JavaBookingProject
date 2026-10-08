@@ -4,6 +4,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -18,6 +19,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import java.util.List;
 
 @Configuration
+@EnableMethodSecurity
 public class SecurityConfig {
 
     private final JwtFilter jwtFilter;
@@ -47,8 +49,7 @@ public class SecurityConfig {
                         "/api/auth/login",
                         "/api/auth/signup",
                         "/api/auth/request-reset",
-                        "/api/auth/reset-password",
-                        "/api/auth/logout"
+                        "/api/auth/reset-password"
                 ).permitAll()
                 .requestMatchers("/api/rooms/price/**").permitAll()
 
@@ -57,6 +58,14 @@ public class SecurityConfig {
                     .hasAnyAuthority("ROLE_USER", "ROLE_ADMIN")
                 .requestMatchers(HttpMethod.POST, "/api/users/**").hasAuthority("ROLE_ADMIN")
                 .requestMatchers(HttpMethod.PUT, "/api/users/me")
+                    .hasAnyAuthority("ROLE_USER", "ROLE_ADMIN")
+
+                // ROLE CHANGES: admin only (must be listed BEFORE the generic PUT rule)
+                .requestMatchers(HttpMethod.PUT, "/api/users/*/promote", "/api/users/*/demote")
+                    .hasAuthority("ROLE_ADMIN")
+
+                // SELF/ADMIN PROFILE UPDATE: finer check done by @PreAuthorize on the controller
+                .requestMatchers(HttpMethod.PUT, "/api/users/*")
                     .hasAnyAuthority("ROLE_USER", "ROLE_ADMIN")
 
                 // ADMIN USER MANAGEMENT
@@ -82,6 +91,11 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/api/bookings")
                     .hasAnyAuthority("ROLE_USER", "ROLE_ADMIN")
                 .requestMatchers(HttpMethod.DELETE, "/api/bookings/**").hasAuthority("ROLE_ADMIN")
+
+                // BOOKING UPDATE / CANCEL (service layer enforces ownership/admin)
+                .requestMatchers(HttpMethod.PUT, "/api/bookings/**").hasAuthority("ROLE_ADMIN")
+                .requestMatchers(HttpMethod.PATCH, "/api/bookings/*/cancel")
+                    .hasAnyAuthority("ROLE_USER", "ROLE_ADMIN")
 
                 // EVERYTHING ELSE
                 .anyRequest().authenticated()

@@ -72,21 +72,25 @@ mongosh --version
 
 ---
 
-### 4️⃣ Configure application properties
+### 4️⃣ Configure environment variables
 
-Edit:
+Secrets are **not** stored in the repo. Set these before starting the app:
 
-```
-src/main/resources/application.properties
-```
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `JWT_SECRET` | **yes** | Random secret, at least 32 characters (app refuses to start without it). Generate one with `openssl rand -base64 48` |
+| `JWT_EXPIRATION_MS` | no | Token lifetime in ms (default `86400000` = 24h) |
+| `SPRING_DATA_MONGODB_URI` | no | MongoDB connection string (default `mongodb://localhost:27017`) |
+| `SEED_ENABLED` | no | `true` to create demo admin/users/rooms on startup (default `false`) |
+| `SEED_ADMIN_PASSWORD` | if seeding | Password for `admin@booking.com` |
+| `SEED_TEST_USER_PASSWORD` | if seeding | Password for `user1@test.com` / `user2@test.com` |
 
-Example:
+Local development example:
 
-```properties
-spring.data.mongodb.uri=mongodb://localhost:27017/bookingdb
-jwt.secret=your-secret-key
-jwt.expiration=86400000
-server.port=8080
+```bash
+export JWT_SECRET="$(openssl rand -base64 48)"
+export SEED_ENABLED=true SEED_ADMIN_PASSWORD='choose-a-password' SEED_TEST_USER_PASSWORD='choose-another'
+mvn spring-boot:run
 ```
 
 ---
@@ -110,7 +114,7 @@ java -jar target/BookingProject-0.0.1-SNAPSHOT.jar
 
 ## 🌱 Database Seeder
 
-On startup, the backend seeds initial rooms:
+When `SEED_ENABLED=true`, the backend seeds demo data on startup (see above). Rooms:
 
 - Room numbers (101, 102, 201…)
 - Types (Single, Double, Suite)
@@ -245,16 +249,6 @@ backend/BookingProject
 | Build | `mvn clean install` |
 | Run | `mvn spring-boot:run` |
 | Test | `mvn test` |
-
----
-
-## 🧩 Environment Variables
-
-| Variable | Description |
-|----------|-------------|
-| `jwt.secret` | Secret key for JWT signing |
-| `jwt.expiration` | Token expiration in ms |
-| `spring.data.mongodb.uri` | MongoDB connection string |
 
 ---
 

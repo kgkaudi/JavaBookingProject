@@ -2,7 +2,10 @@ package com.kostas.bookingproject.security;
 
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+
+import java.nio.charset.StandardCharsets;
 
 import java.security.Key;
 import java.util.Date;
@@ -11,11 +14,18 @@ import java.util.List;
 @Component
 public class JwtUtil {
 
-    private static final String SECRET =
-            "u8JHk39sdf98JHk39sdf98JHk39sdf98JHk39sdf98JHk39sdf98JHk39sdf98JHk3";
+    private final Key key;
+    private final long expiration;
 
-    private final Key key = Keys.hmacShaKeyFor(SECRET.getBytes());
-    private static final long EXPIRATION = 1000 * 60 * 60 * 24; // 24h
+    public JwtUtil(@Value("${jwt.secret}") String secret,
+                   @Value("${jwt.expiration-ms:86400000}") long expiration) {
+        if (secret == null || secret.getBytes(StandardCharsets.UTF_8).length < 32) {
+            throw new IllegalStateException(
+                    "jwt.secret must be set (env JWT_SECRET) and be at least 32 bytes long");
+        }
+        this.key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
+        this.expiration = expiration;
+    }
 
     // ---------------------------------------------------------
     // GENERATE TOKEN (USER-ID BASED)
@@ -30,7 +40,7 @@ public class JwtUtil {
                 .setSubject(userId) // userId is the JWT subject
                 .claim("roles", springRoles)
                 .setIssuedAt(new Date())
-                .setExpiration(new Date(System.currentTimeMillis() + EXPIRATION))
+                .setExpiration(new Date(System.currentTimeMillis() + expiration))
                 .signWith(key, SignatureAlgorithm.HS256)
                 .compact();
     }
@@ -56,7 +66,7 @@ public class JwtUtil {
     // ---------------------------------------------------------
     public String generateTokenWithoutRoles(String userId) {
         Date now = new Date();
-        Date expiry = new Date(now.getTime() + EXPIRATION);
+        Date expiry = new Date(now.getTime() + expiration);
 
         return Jwts.builder()
                 .setSubject(userId)

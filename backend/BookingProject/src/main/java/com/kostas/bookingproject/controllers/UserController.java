@@ -1,5 +1,7 @@
 package com.kostas.bookingproject.controllers;
 
+import com.kostas.bookingproject.dto.UpdateUserRequest;
+import com.kostas.bookingproject.dto.UserResponse;
 import com.kostas.bookingproject.models.User;
 import com.kostas.bookingproject.security.CustomUserDetails;
 import com.kostas.bookingproject.services.UserService;
@@ -24,24 +26,26 @@ public class UserController {
     // GET ALL USERS (ADMIN)
     // ---------------------------------------------------------
     @GetMapping
-    public List<User> getAllUsers() {
-        return userService.getAllUsers();
+    @PreAuthorize("hasRole('ADMIN')")
+    public List<UserResponse> getAllUsers() {
+        return userService.getAllUsers().stream().map(UserResponse::from).toList();
     }
 
     // ---------------------------------------------------------
     // GET USER BY ID (ADMIN)
     // ---------------------------------------------------------
     @GetMapping("/{userId}")
-    public User getUserById(@PathVariable String userId) {
-        return userService.getUserById(userId);
+    @PreAuthorize("hasRole('ADMIN')")
+    public UserResponse getUserById(@PathVariable String userId) {
+        return UserResponse.from(userService.getUserById(userId));
     }
 
     // ---------------------------------------------------------
     // GET AUTHENTICATED USER (SELF)
     // ---------------------------------------------------------
     @GetMapping("/me")
-    public CustomUserDetails getMe(@AuthenticationPrincipal CustomUserDetails userDetails) {
-        return userDetails;
+    public UserResponse getMe(@AuthenticationPrincipal CustomUserDetails userDetails) {
+        return UserResponse.from(userDetails.getUser());
     }
 
     // ---------------------------------------------------------
@@ -49,26 +53,27 @@ public class UserController {
     // ---------------------------------------------------------
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
-    public User createUser(@RequestBody User newUser) {
-        return userService.createUser(newUser);
+    public UserResponse createUser(@RequestBody User newUser) {
+        return UserResponse.from(userService.createUser(newUser));
     }
 
     // ---------------------------------------------------------
-    // UPDATE USER (ADMIN or SELF)
+    // UPDATE USER PROFILE (ADMIN or SELF) - name/email/phone only
     // ---------------------------------------------------------
     @PutMapping("/{userId}")
-    @PreAuthorize("#userId == authentication.principal.id or hasRole('ADMIN')")
-    public User updateUser(
+    @PreAuthorize("hasRole('ADMIN') or #userId == authentication.principal.id")
+    public UserResponse updateUser(
             @PathVariable String userId,
-            @RequestBody User updatedUser) {
+            @RequestBody UpdateUserRequest request) {
 
-        return userService.updateUser(userId, updatedUser);
+        return UserResponse.from(userService.updateUser(userId, request));
     }
 
     // ---------------------------------------------------------
     // DELETE USER (ADMIN)
     // ---------------------------------------------------------
     @DeleteMapping("/{userId}")
+    @PreAuthorize("hasRole('ADMIN')")
     public void deleteUser(@PathVariable String userId) {
         userService.deleteUser(userId);
     }
@@ -77,15 +82,17 @@ public class UserController {
     // PROMOTE USER TO ADMIN (ADMIN)
     // ---------------------------------------------------------
     @PutMapping("/{userId}/promote")
-    public User promoteToAdmin(@PathVariable String userId) {
-        return userService.promoteToAdmin(userId);
+    @PreAuthorize("hasRole('ADMIN')")
+    public UserResponse promoteToAdmin(@PathVariable String userId) {
+        return UserResponse.from(userService.promoteToAdmin(userId));
     }
 
     // ---------------------------------------------------------
     // DEMOTE USER TO USER (ADMIN)
     // ---------------------------------------------------------
     @PutMapping("/{userId}/demote")
-    public User demoteToUser(@PathVariable String userId) {
-        return userService.demoteToUser(userId);
+    @PreAuthorize("hasRole('ADMIN')")
+    public UserResponse demoteToUser(@PathVariable String userId) {
+        return UserResponse.from(userService.demoteToUser(userId));
     }
 }

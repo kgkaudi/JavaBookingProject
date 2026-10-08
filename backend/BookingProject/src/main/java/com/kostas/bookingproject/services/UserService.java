@@ -1,5 +1,6 @@
 package com.kostas.bookingproject.services;
 
+import com.kostas.bookingproject.dto.UpdateUserRequest;
 import com.kostas.bookingproject.models.User;
 import com.kostas.bookingproject.repositories.UserRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -51,10 +52,9 @@ public class UserService {
         }
 
         if (newUser.getPassword() == null || newUser.getPassword().isBlank()) {
-            newUser.setPassword(passwordEncoder.encode("default123"));
-        } else {
-            newUser.setPassword(passwordEncoder.encode(newUser.getPassword()));
+            throw new IllegalArgumentException("Password is required");
         }
+        newUser.setPassword(passwordEncoder.encode(newUser.getPassword()));
 
         if (newUser.getRoles() == null || newUser.getRoles().isEmpty()) {
             newUser.setRoles(List.of("ROLE_USER"));
@@ -64,20 +64,27 @@ public class UserService {
     }
 
     // ---------------------------------------------------------
-    // UPDATE USER
+    // UPDATE USER (profile fields only - roles/password are never touched)
     // ---------------------------------------------------------
-    public User updateUser(String userId, User updatedUser) {
+    public User updateUser(String userId, UpdateUserRequest request) {
         User existingUser = users.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
 
-        existingUser.setName(updatedUser.getName());
-        existingUser.setEmail(updatedUser.getEmail());
-        existingUser.setPhone(updatedUser.getPhone());
+        if (request.name() != null) {
+            existingUser.setName(request.name());
+        }
 
-        if (updatedUser.getRoles() != null && !updatedUser.getRoles().isEmpty()) {
-            existingUser.setRoles(updatedUser.getRoles());
-        } else if (updatedUser.getRole() != null && !updatedUser.getRole().isBlank()) {
-            existingUser.setRoles(List.of(updatedUser.getRole()));
+        if (request.email() != null && !request.email().equalsIgnoreCase(existingUser.getEmail())) {
+            users.findByEmail(request.email())
+                    .filter(other -> !other.getId().equals(existingUser.getId()))
+                    .ifPresent(other -> {
+                        throw new IllegalArgumentException("Email already exists");
+                    });
+            existingUser.setEmail(request.email());
+        }
+
+        if (request.phone() != null) {
+            existingUser.setPhone(request.phone());
         }
 
         return users.save(existingUser);

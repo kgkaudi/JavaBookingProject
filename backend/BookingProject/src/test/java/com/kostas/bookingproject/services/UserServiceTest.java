@@ -1,5 +1,6 @@
 package com.kostas.bookingproject.services;
 
+import com.kostas.bookingproject.dto.UpdateUserRequest;
 import com.kostas.bookingproject.models.User;
 import com.kostas.bookingproject.repositories.UserRepository;
 
@@ -58,19 +59,16 @@ class UserServiceTest {
     }
 
     @Test
-    void createUser_success_defaultPassword() {
+    void createUser_blankPassword_rejected() {
         User newUser = new User();
         newUser.setEmail("new@test.com");
         newUser.setPassword(""); // blank
 
         when(users.findByEmail("new@test.com")).thenReturn(Optional.empty());
-        when(passwordEncoder.encode("default123")).thenReturn("DEFAULT_ENC");
-        when(users.save(any(User.class))).thenAnswer(i -> i.getArgument(0));
 
-        User result = userService.createUser(newUser);
-
-        assertEquals("DEFAULT_ENC", result.getPassword());
-        assertEquals(List.of("ROLE_USER"), result.getRoles());
+        assertThrows(IllegalArgumentException.class,
+                () -> userService.createUser(newUser));
+        verify(users, never()).save(any());
     }
 
     @Test
@@ -85,27 +83,26 @@ class UserServiceTest {
     }
 
     @Test
-    void createUser_nullEmail_allowed_but_uniqueCheckRuns() {
+    void createUser_nullPassword_rejected() {
         User newUser = new User();
-        newUser.setEmail(null);
+        newUser.setEmail("new@test.com");
+        newUser.setPassword(null);
 
-        when(users.findByEmail(null)).thenReturn(Optional.empty());
-        when(passwordEncoder.encode("default123")).thenReturn("DEFAULT_ENC");
-        when(users.save(any(User.class))).thenAnswer(i -> i.getArgument(0));
+        when(users.findByEmail("new@test.com")).thenReturn(Optional.empty());
 
-        User result = userService.createUser(newUser);
-
-        assertEquals(List.of("ROLE_USER"), result.getRoles());
+        assertThrows(IllegalArgumentException.class,
+                () -> userService.createUser(newUser));
     }
 
     @Test
     void createUser_nullRoles_assignDefault() {
         User newUser = new User();
         newUser.setEmail("new@test.com");
+        newUser.setPassword("plain123");
         newUser.setRoles(null);
 
         when(users.findByEmail("new@test.com")).thenReturn(Optional.empty());
-        when(passwordEncoder.encode("default123")).thenReturn("DEFAULT_ENC");
+        when(passwordEncoder.encode("plain123")).thenReturn("ENCODED");
         when(users.save(any(User.class))).thenAnswer(i -> i.getArgument(0));
 
         User result = userService.createUser(newUser);
@@ -173,48 +170,42 @@ class UserServiceTest {
     // ---------------------------------------------------------
 
     @Test
-    void updateUser_success_singleRole() {
-        User updated = new User();
-        updated.setName("New Name");
-        updated.setEmail("new@test.com");
-        updated.setPhone("6999999999");
-        updated.setRole("ROLE_ADMIN");
+    void updateUser_success_profileFields() {
+        UpdateUserRequest request = new UpdateUserRequest("New Name", "new@test.com", "6999999999");
 
         when(users.findById("u1")).thenReturn(Optional.of(user));
+        when(users.findByEmail("new@test.com")).thenReturn(Optional.empty());
         when(users.save(any(User.class))).thenAnswer(i -> i.getArgument(0));
 
-        User result = userService.updateUser("u1", updated);
+        User result = userService.updateUser("u1", request);
 
         assertEquals("New Name", result.getName());
         assertEquals("new@test.com", result.getEmail());
         assertEquals("6999999999", result.getPhone());
-        assertEquals(List.of("ROLE_ADMIN"), result.getRoles());
     }
 
     @Test
-    void updateUser_success_rolesList_priority() {
-        User updated = new User();
-        updated.setRoles(List.of("ROLE_ADMIN", "ROLE_USER"));
+    void updateUser_neverChangesRolesOrPassword() {
+        List<String> rolesBefore = List.copyOf(user.getRoles());
+        String passwordBefore = user.getPassword();
 
         when(users.findById("u1")).thenReturn(Optional.of(user));
         when(users.save(any(User.class))).thenAnswer(i -> i.getArgument(0));
 
-        User result = userService.updateUser("u1", updated);
+        User result = userService.updateUser("u1", new UpdateUserRequest("X", null, null));
 
-        assertEquals(List.of("ROLE_ADMIN", "ROLE_USER"), result.getRoles());
+        assertEquals(rolesBefore, result.getRoles());
+        assertEquals(passwordBefore, result.getPassword());
     }
 
     @Test
-    void updateUser_emptyRolesList_keepsExistingRoles() {
-        User updated = new User();
-        updated.setRoles(List.of()); // empty list
-
+    void updateUser_emailTakenByAnotherUser_rejected() {
         when(users.findById("u1")).thenReturn(Optional.of(user));
-        when(users.save(any(User.class))).thenAnswer(i -> i.getArgument(0));
+        when(users.findByEmail("admin@test.com")).thenReturn(Optional.of(admin));
 
-        User result = userService.updateUser("u1", updated);
-
-        assertEquals(List.of("ROLE_USER"), result.getRoles());
+        assertThrows(IllegalArgumentException.class,
+                () -> userService.updateUser("u1", new UpdateUserRequest(null, "admin@test.com", null)));
+        verify(users, never()).save(any());
     }
 
     @Test
@@ -222,7 +213,7 @@ class UserServiceTest {
         when(users.findById("u1")).thenReturn(Optional.empty());
 
         assertThrows(IllegalArgumentException.class,
-                () -> userService.updateUser("u1", new User()));
+                () -> userService.updateUser("u1", new UpdateUserRequest(null, null, null)));
     }
 
     // ---------------------------------------------------------
