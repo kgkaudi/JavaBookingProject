@@ -1,0 +1,26 @@
+--- src/pages/AdminUsers.test.tsx	2026-10-10 14:09:40.616859930 +0000
++++ src/pages/AdminUsers.test.tsx	2026-10-10 14:09:40.619650086 +0000
+@@ -38,16 +38,17 @@
+ 
+   it("creates a user with an initial password and a roles array", async () => {
+     mock.onPost("/api/users").reply(200, { ...normalUser, id: "u2" });
++    const user = userEvent.setup({ delay: null });
+     renderPage(<AdminUsers />);
+     await rowOf(normalUser.email);
+ 
+-    await userEvent.click(screen.getByRole("button", { name: /add user/i }));
++    await user.click(screen.getByRole("button", { name: /add user/i }));
+ 
+-    await userEvent.type(screen.getByPlaceholderText("Enter full name"), "Bob");
+-    await userEvent.type(screen.getByPlaceholderText("Enter email"), "bob@x.com");
+-    await userEvent.type(screen.getByPlaceholderText("Enter phone number"), "123");
+-    await userEvent.type(screen.getByPlaceholderText("At least 8 characters"), "Passw0rd123");
+-    await userEvent.click(screen.getByRole("button", { name: /create user/i }));
++    await user.type(screen.getByPlaceholderText("Enter full name"), "Bob");
++    await user.type(screen.getByPlaceholderText("Enter email"), "bob@x.com");
++    await user.type(screen.getByPlaceholderText("Enter phone number"), "123");
++    await user.type(screen.getByPlaceholderText("At least 8 characters"), "Passw0rd123");
++    await user.click(screen.getByRole("button", { name: /create user/i }));
+ 
+     await waitFor(() => expect(mock.history.post).toHaveLength(1));
+     expect(JSON.parse(mock.history.post[0].data)).toEqual({

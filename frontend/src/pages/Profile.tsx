@@ -1,13 +1,21 @@
+import { useState } from "react";
 import { ProDescriptions } from "@ant-design/pro-components";
-import { Card, Tag, Form, Input, Button } from "antd";
+import { Button, Card, Form, Input, Tag } from "antd";
 import { useAuth } from "../context/AuthContext";
+
+interface ProfileValues {
+  name: string;
+  phone?: string;
+}
 
 export default function Profile() {
   const { user, updateUser } = useAuth();
 
-  const profile = user?.user || user;
+  // hooks must run on every render, before any early return
+  const [form] = Form.useForm<ProfileValues>();
+  const [saving, setSaving] = useState(false);
 
-  if (!profile) {
+  if (!user) {
     return (
       <Card style={{ maxWidth: 800, margin: "0 auto" }}>
         <p>No user data available.</p>
@@ -15,70 +23,58 @@ export default function Profile() {
     );
   }
 
-  const [form] = Form.useForm();
-
-  const handleSubmit = async (values: any) => {
-    await updateUser(values);
+  const handleSubmit = async (values: ProfileValues) => {
+    setSaving(true);
+    try {
+      // only name and phone can be changed here (the backend ignores anything else)
+      await updateUser({ name: values.name.trim(), phone: values.phone?.trim() });
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
     <Card title="Profile" style={{ maxWidth: 800, margin: "0 auto" }}>
       {/* VIEW MODE */}
       <ProDescriptions column={1} title="User Information">
-        <ProDescriptions.Item label="Full Name">
-          {profile.name || "—"}
-        </ProDescriptions.Item>
+        <ProDescriptions.Item label="Full Name">{user.name || "—"}</ProDescriptions.Item>
 
-        <ProDescriptions.Item label="Email">
-          {profile.email || "—"}
-        </ProDescriptions.Item>
+        <ProDescriptions.Item label="Email">{user.email || "—"}</ProDescriptions.Item>
 
         <ProDescriptions.Item label="Roles">
-          {profile.roles?.length ? (
-            profile.roles.map((r) => (
-              <Tag color={r === "ROLE_ADMIN" ? "red" : "blue"} key={r}>
-                {r.replace("ROLE_", "")}
-              </Tag>
-            ))
-          ) : (
-            "—"
-          )}
+          {user.roles?.length
+            ? user.roles.map((r) => (
+                <Tag color={r === "ROLE_ADMIN" ? "red" : "blue"} key={r}>
+                  {r.replace("ROLE_", "")}
+                </Tag>
+              ))
+            : "—"}
         </ProDescriptions.Item>
 
-        <ProDescriptions.Item label="Phone">
-          {profile.phone || "—"}
-        </ProDescriptions.Item>
+        <ProDescriptions.Item label="Phone">{user.phone || "—"}</ProDescriptions.Item>
       </ProDescriptions>
 
       {/* EDIT MODE */}
-      <Form
+      <Form<ProfileValues>
         form={form}
         layout="vertical"
-        initialValues={{
-          name: profile.name,
-          phone: profile.phone,
-          email: profile.email,
-        }}
+        initialValues={{ name: user.name, phone: user.phone }}
         onFinish={handleSubmit}
         style={{ marginTop: 32 }}
       >
         <Form.Item
           name="name"
           label="Full Name"
-          rules={[{ required: true, message: "Name is required" }]}
+          rules={[{ required: true, whitespace: true, message: "Name is required" }]}
         >
           <Input placeholder="Enter your name" />
-        </Form.Item>
-
-        <Form.Item name="email" hidden>
-          <Input type="hidden" />
         </Form.Item>
 
         <Form.Item name="phone" label="Phone">
           <Input placeholder="Enter your phone number" />
         </Form.Item>
 
-        <Button type="primary" htmlType="submit">
+        <Button type="primary" htmlType="submit" loading={saving}>
           Update Profile
         </Button>
       </Form>

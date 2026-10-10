@@ -1,5 +1,3 @@
-// frontend/src/pages/Home.tsx
-import React from "react";
 import { Button, Card, Row, Col, Typography } from "antd";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
@@ -7,19 +5,18 @@ import { useAuth } from "../context/AuthContext";
 const { Title, Paragraph } = Typography;
 
 export default function Home() {
-  const { isAdmin } = useAuth();
+  const { isAdmin, user } = useAuth();
 
   return (
     <div style={{ padding: 24 }}>
       <Row gutter={[24, 24]} justify="center">
         <Col xs={24} sm={20} md={16} lg={12}>
-          <Card bordered={false} style={{ textAlign: "center" }}>
+          <Card variant="borderless" style={{ textAlign: "center" }}>
             <Title level={2} style={{ marginBottom: 8 }}>
-              Welcome to BookingProject
+              Welcome{user?.name ? `, ${user.name}` : ""}
             </Title>
-            <Paragraph style={{ fontSize: 16, color: "rgba(0,0,0,0.65)" }}>
-              Book rooms quickly, manage your reservations, and explore
-              available rooms.
+            <Paragraph style={{ fontSize: 16 }} type="secondary">
+              Book rooms quickly, manage your reservations, and explore available rooms.
             </Paragraph>
 
             <Row justify="center" gutter={12} style={{ marginTop: 20 }}>
@@ -35,7 +32,7 @@ export default function Home() {
               </Col>
               {isAdmin && (
                 <Col>
-                  <Link to="/admin/users">
+                  <Link to="/admin">
                     <Button>Admin</Button>
                   </Link>
                 </Col>
@@ -47,19 +44,19 @@ export default function Home() {
 
       <Row gutter={[24, 24]} style={{ marginTop: 32 }}>
         <Col xs={24} md={12}>
-          <Card title="How it works" bordered={false}>
+          <Card title="How it works" variant="borderless">
             <Paragraph>
-              Search available rooms, pick dates, and confirm your booking.
-              Manage bookings from your profile.
+              Search available rooms, pick dates, and confirm your booking. Manage or cancel
+              bookings from the My Bookings page.
             </Paragraph>
           </Card>
         </Col>
 
         <Col xs={24} md={12}>
-          <Card title="Tips" bordered={false}>
+          <Card title="Tips" variant="borderless">
             <Paragraph>
-              Use the calendar to choose start and end dates. Check availability
-              before creating a booking.
+              Pick your check-in and check-out day in the calendar. The check-out day is free for the
+              next guest, so you can book back-to-back stays.
             </Paragraph>
           </Card>
         </Col>

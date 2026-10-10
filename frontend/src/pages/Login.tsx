@@ -1,37 +1,40 @@
-import { Link, useNavigate } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
+import { useState } from "react";
+import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { Card, message } from "antd";
 import { ProForm, ProFormText } from "@ant-design/pro-components";
-import { useState } from "react";
+import { useAuth } from "../context/AuthContext";
+import { getErrorMessage } from "../api/errors";
+
+interface LoginValues {
+  email: string;
+  password: string;
+}
 
 export default function Login() {
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const location = useLocation();
+  const { login, token, user } = useAuth();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const handleLogin = async (values: any) => {
+  // send the user back to the page they originally asked for
+  const from = (location.state as { from?: { pathname?: string } } | null)?.from?.pathname ?? "/";
+
+  // already logged in → nothing to do here
+  if (token && user) {
+    return <Navigate to={from} replace />;
+  }
+
+  const handleLogin = async (values: LoginValues) => {
     setErrorMessage(null);
     setLoading(true);
 
     try {
-      await login(values.email, values.password);
-
+      await login(values.email.trim(), values.password);
       message.success("Login successful");
-      navigate("/");
-    } catch (err: any) {
-      const res = err?.response?.data;
-
-      const backendMessage =
-        typeof res === "string"
-          ? res
-          : res?.message ||
-            res?.error ||
-            res?.details ||
-            (Array.isArray(res?.errors) ? res.errors.join(", ") : null);
-
-      const finalMessage = backendMessage || "Invalid email or password";
-
+      navigate(from, { replace: true });
+    } catch (err) {
+      const finalMessage = getErrorMessage(err, "Invalid email or password");
       message.error(finalMessage);
       setErrorMessage(finalMessage);
     } finally {
@@ -50,12 +53,12 @@ export default function Login() {
         padding: 24,
       }}
     >
-      <Card title="Welcome Back" style={{ width: 420 }}>
+      <Card title="Welcome Back" style={{ width: 420, maxWidth: "100%" }}>
         <p style={{ textAlign: "center", opacity: 0.7, marginBottom: 20 }}>
           Login to access your dashboard
         </p>
 
-        <ProForm
+        <ProForm<LoginValues>
           onFinish={handleLogin}
           submitter={{
             searchConfig: {
@@ -72,6 +75,7 @@ export default function Login() {
             name="email"
             label="Email"
             placeholder="Enter your email"
+            fieldProps={{ autoComplete: "username" }}
             rules={[
               { required: true, message: "Email is required" },
               { type: "email", message: "Invalid email format" },
@@ -82,12 +86,14 @@ export default function Login() {
             name="password"
             label="Password"
             placeholder="Enter your password"
+            fieldProps={{ autoComplete: "current-password" }}
             rules={[{ required: true, message: "Password is required" }]}
           />
         </ProForm>
 
         {errorMessage && (
           <p
+            role="alert"
             style={{
               color: "#ff4d4f",
               textAlign: "center",

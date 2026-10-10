@@ -13,17 +13,13 @@ export default function AdminPanel() {
         justifyContent: "center",
       }}
     >
-      <Card
-        title="Admin Panel"
-        style={{ width: 700 }}
-      >
+      <Card title="Admin Panel" style={{ width: 700, maxWidth: "100%" }}>
         <h2 style={{ marginBottom: 16 }}>
           Welcome, {user?.name} <Tag color="red">ADMIN</Tag>
         </h2>
 
         <p style={{ opacity: 0.8, marginBottom: 24 }}>
-          This section is restricted to administrators only.  
-          Manage system data, view analytics, and perform privileged actions.
+          This section is restricted to administrators. Manage rooms, bookings and users.
         </p>
 
         {/* Admin Tools */}
@@ -31,25 +27,17 @@ export default function AdminPanel() {
           <h3 style={{ marginBottom: 12 }}>Admin Tools</h3>
 
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-            <Button type="primary">
-              Manage Rooms
-            </Button>
+            <Link to="/admin/rooms">
+              <Button type="primary">Manage Rooms</Button>
+            </Link>
 
-            <Button type="primary">
-              Manage Bookings
-            </Button>
+            <Link to="/admin/bookings">
+              <Button type="primary">Manage Bookings</Button>
+            </Link>
 
-            <Button type="primary">
-              Manage Users
-            </Button>
-
-            <Button type="default">
-              System Logs
-            </Button>
-
-            <Button type="default">
-              Analytics Dashboard
-            </Button>
+            <Link to="/admin/users">
+              <Button type="primary">Manage Users</Button>
+            </Link>
           </div>
         </div>
 

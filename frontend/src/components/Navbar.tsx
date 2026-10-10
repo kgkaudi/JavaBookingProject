@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
 export default function Navbar() {
-  const { token, user, isAdmin, logout } = useAuth();
+  const { token, isAdmin, logout } = useAuth();
 
   return (
     <div className="navbar bg-base-100/80 backdrop-blur-md border-b border-base-300 px-4">
@@ -41,7 +41,7 @@ export default function Navbar() {
         {/* Auth buttons */}
         {token ? (
           <button
-            onClick={logout}
+            onClick={() => void logout()}
             className="btn btn-outline btn-error btn-sm"
           >
             Logout

@@ -1,42 +1,40 @@
+import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import axios from "../api/axios";
 import { Card, message } from "antd";
 import { ProForm, ProFormText } from "@ant-design/pro-components";
-import { useState } from "react";
+import { signup } from "../api/auth";
+import { getErrorMessage } from "../api/errors";
+
+interface SignupValues {
+  name: string;
+  email: string;
+  password: string;
+  confirmPassword: string;
+  phone: string;
+}
 
 export default function Signup() {
   const navigate = useNavigate();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const handleSignup = async (values: any) => {
-    setErrorMessage(null); // clear previous error
+  const handleSignup = async (values: SignupValues) => {
+    setErrorMessage(null);
 
     try {
-      await axios.post("/api/auth/signup", {
-        name: values.name,
-        email: values.email,
+      await signup({
+        name: values.name.trim(),
+        email: values.email.trim(),
         password: values.password,
-        phone: values.phone,
+        phone: values.phone.trim(),
       });
 
       message.success("Account created successfully");
       navigate("/login");
-    } catch (err: any) {
-      const res = err?.response?.data;
-
-      // Handle both string and object responses
-      const backendMessage =
-        typeof res === "string"
-          ? res
-          : res?.message ||
-            res?.error ||
-            res?.details ||
-            (Array.isArray(res?.errors) ? res.errors.join(", ") : null);
-
-      const finalMessage = backendMessage || "Signup failed";
-
+    } catch (err) {
+      // e.g. 409 "Email already in use", or 400 with the failing field names
+      const finalMessage = getErrorMessage(err, "Signup failed");
       message.error(finalMessage);
-      setErrorMessage(finalMessage); // show message in UI
+      setErrorMessage(finalMessage);
     }
   };
 
@@ -51,8 +49,8 @@ export default function Signup() {
         padding: 24,
       }}
     >
-      <Card title="Create Account" style={{ width: 420 }}>
-        <ProForm
+      <Card title="Create Account" style={{ width: 420, maxWidth: "100%" }}>
+        <ProForm<SignupValues>
           onFinish={handleSignup}
           submitter={{
             searchConfig: {
@@ -65,37 +63,62 @@ export default function Signup() {
             name="name"
             label="Full Name"
             placeholder="Enter your full name"
-            rules={[{ required: true, message: "Name is required" }]}
+            rules={[{ required: true, whitespace: true, message: "Name is required" }]}
           />
 
           <ProFormText
             name="email"
             label="Email"
             placeholder="Enter your email"
+            fieldProps={{ autoComplete: "username" }}
             rules={[
               { required: true, message: "Email is required" },
               { type: "email", message: "Invalid email format" },
             ]}
           />
 
+          {/* same rule as the backend: 8-72 characters */}
           <ProFormText.Password
             name="password"
             label="Password"
-            placeholder="Enter your password"
-            rules={[{ required: true, message: "Password is required" }]}
+            placeholder="At least 8 characters"
+            fieldProps={{ autoComplete: "new-password" }}
+            rules={[
+              { required: true, message: "Password is required" },
+              { min: 8, message: "Password must be at least 8 characters" },
+              { max: 72, message: "Password must be at most 72 characters" },
+            ]}
+          />
+
+          <ProFormText.Password
+            name="confirmPassword"
+            label="Confirm Password"
+            placeholder="Repeat your password"
+            dependencies={["password"]}
+            fieldProps={{ autoComplete: "new-password" }}
+            rules={[
+              { required: true, message: "Please confirm your password" },
+              ({ getFieldValue }) => ({
+                validator(_, value) {
+                  return !value || getFieldValue("password") === value
+                    ? Promise.resolve()
+                    : Promise.reject(new Error("Passwords do not match"));
+                },
+              }),
+            ]}
           />
 
           <ProFormText
             name="phone"
             label="Phone Number"
             placeholder="Enter your phone number"
-            rules={[{ required: true, message: "Phone number is required" }]}
+            rules={[{ required: true, whitespace: true, message: "Phone number is required" }]}
           />
         </ProForm>
 
-        {/* 👇 Display backend error visibly */}
         {errorMessage && (
           <p
+            role="alert"
             style={{
               color: "#ff4d4f",
               textAlign: "center",

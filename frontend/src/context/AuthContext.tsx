@@ -1,144 +1,160 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useState } from "react";
+import type { ReactNode } from "react";
 import { message } from "antd";
-import api from "../api/axios";
+import api, { TOKEN_KEY, USER_KEY, setUnauthorizedHandler } from "../api/axios";
+import { getErrorMessage } from "../api/errors";
+import { ROLE_ADMIN, ROLE_USER } from "../types";
+import type { AuthResponse, User } from "../types";
 
-interface UserType {
-  id: string;
-  name: string;
-  email: string;
+export interface ProfileUpdate {
+  name?: string;
   phone?: string;
-  roles?: string[];
-  createdAt?: string;
 }
 
 interface AuthContextType {
   token: string | null;
-  user: UserType | null;
+  user: User | null;
   isAdmin: boolean;
   isUser: boolean;
   login: (email: string, password: string) => Promise<void>;
-  logout: () => void;
-  updateUser: (updatedData: Partial<UserType>) => Promise<void>;
+  logout: () => Promise<void>;
+  updateUser: (updatedData: ProfileUpdate) => Promise<void>;
   loading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
-export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  const [token, setToken] = useState<string | null>(null);
-  const [user, setUser] = useState<UserType | null>(null);
-  const [loading, setLoading] = useState(true);
+function readStoredUser(): User | null {
+  try {
+    const raw = localStorage.getItem(USER_KEY);
+    return raw ? (JSON.parse(raw) as User) : null;
+  } catch {
+    localStorage.removeItem(USER_KEY);
+    return null;
+  }
+}
+
+export const AuthProvider = ({ children }: { children: ReactNode }) => {
+  const [token, setToken] = useState<string | null>(() => localStorage.getItem(TOKEN_KEY));
+  const [user, setUser] = useState<User | null>(readStoredUser);
+  // while a stored token is being verified we must not redirect to /login
+  const [loading, setLoading] = useState<boolean>(() => !!localStorage.getItem(TOKEN_KEY));
+
+  // Forget the session locally (no network call)
+  const clearSession = useCallback(() => {
+    setToken(null);
+    setUser(null);
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(USER_KEY);
+  }, []);
 
   // ---------------------------------------------------------
-  // RESTORE SESSION ON REFRESH
+  // RESTORE SESSION ON REFRESH (verify the stored token)
   // ---------------------------------------------------------
   useEffect(() => {
-    const storedToken = localStorage.getItem("token");
-    const storedUser = localStorage.getItem("user");
-
-    if (!storedToken) {
-      setLoading(false);
+    if (!localStorage.getItem(TOKEN_KEY)) {
       return;
     }
 
-    setToken(storedToken);
-
-    if (storedUser) {
-      try {
-        setUser(JSON.parse(storedUser));
-      } catch {
-        localStorage.removeItem("user");
-      }
-    }
+    let active = true;
 
     api
-      .get("/api/users/me")
+      .get<User>("/api/users/me", { skipSessionCheck: true })
       .then((res) => {
+        if (!active) return;
         setUser(res.data);
-        localStorage.setItem("user", JSON.stringify(res.data));
+        localStorage.setItem(USER_KEY, JSON.stringify(res.data));
       })
       .catch(() => {
-        logout();
+        if (active) clearSession();
       })
       .finally(() => {
-        setLoading(false);
+        if (active) setLoading(false);
       });
-  }, []);
+
+    return () => {
+      active = false;
+    };
+  }, [clearSession]);
+
+  // ---------------------------------------------------------
+  // SESSION EXPIRED mid-use (axios interceptor tells us)
+  // ---------------------------------------------------------
+  useEffect(
+    () =>
+      setUnauthorizedHandler(() => {
+        clearSession();
+        message.warning("Your session has expired. Please log in again.");
+      }),
+    [clearSession]
+  );
 
   // ---------------------------------------------------------
   // LOGIN
   // ---------------------------------------------------------
   const login = async (email: string, password: string) => {
-    const res = await api.post("/api/auth/login", { email, password });
+    const res = await api.post<AuthResponse>("/api/auth/login", { email, password });
 
-    const token = res.data.token;
-    setToken(token);
-    localStorage.setItem("token", token);
-
-    const me = await api.get("/api/users/me");
-    setUser(me.data);
-    localStorage.setItem("user", JSON.stringify(me.data));
-  };
-
-  // ---------------------------------------------------------
-  // LOGOUT
-  // ---------------------------------------------------------
-  const logout = () => {
-    setToken(null);
-    setUser(null);
-
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-  };
-
-  // ---------------------------------------------------------
-  // UPDATE LOGGED-IN USER
-  // ---------------------------------------------------------
-  const updateUser = async (updatedData: Partial<UserType>) => {
-    if (!user) return;
-
-    // Handle nested structure from backend
-    const userId = user.id || user.user?.id;
+    // the request interceptor reads the token from storage
+    localStorage.setItem(TOKEN_KEY, res.data.token);
 
     try {
-      const res = await api.put(`/api/users/${userId}`, updatedData);
-      const updatedUser = res.data;
+      const me = await api.get<User>("/api/users/me", { skipSessionCheck: true });
+      setToken(res.data.token);
+      setUser(me.data);
+      localStorage.setItem(USER_KEY, JSON.stringify(me.data));
+    } catch (err) {
+      localStorage.removeItem(TOKEN_KEY);
+      throw err;
+    }
+  };
 
-      setUser(updatedUser);
-      localStorage.setItem("user", JSON.stringify(updatedUser));
+  // ---------------------------------------------------------
+  // LOGOUT — tell the backend to blacklist the token, then forget it locally
+  // ---------------------------------------------------------
+  const logout = async () => {
+    try {
+      await api.post("/api/auth/logout", null, { skipSessionCheck: true });
+    } catch {
+      // token already expired / server unreachable: still log out locally
+    } finally {
+      clearSession();
+    }
+  };
 
+  // ---------------------------------------------------------
+  // UPDATE LOGGED-IN USER (name / phone only; the backend ignores anything else)
+  // ---------------------------------------------------------
+  const updateUser = async (updatedData: ProfileUpdate) => {
+    if (!user) return;
+
+    try {
+      const res = await api.put<User>(`/api/users/${user.id}`, updatedData);
+      setUser(res.data);
+      localStorage.setItem(USER_KEY, JSON.stringify(res.data));
       message.success("Profile updated successfully");
-    } catch (err: any) {
-      const msg = err?.response?.data?.message || "Failed to update profile";
-      message.error(msg);
+    } catch (err) {
+      message.error(getErrorMessage(err, "Failed to update profile"));
     }
   };
 
   // ---------------------------------------------------------
   // ROLE HELPERS
   // ---------------------------------------------------------
-  const roles = user?.roles ?? user?.user?.roles ?? [];
-  const isAdmin = roles.includes("ROLE_ADMIN");
-  const isUser = roles.includes("ROLE_USER");
+  const roles = user?.roles ?? [];
+  const isAdmin = roles.includes(ROLE_ADMIN);
+  const isUser = roles.includes(ROLE_USER);
 
   return (
     <AuthContext.Provider
-      value={{
-        token,
-        user,
-        isAdmin,
-        isUser,
-        updateUser,
-        login,
-        logout,
-        loading,
-      }}
+      value={{ token, user, isAdmin, isUser, updateUser, login, logout, loading }}
     >
       {children}
     </AuthContext.Provider>
   );
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useAuth = () => {
   const ctx = useContext(AuthContext);
   if (!ctx) throw new Error("useAuth must be used inside AuthProvider");

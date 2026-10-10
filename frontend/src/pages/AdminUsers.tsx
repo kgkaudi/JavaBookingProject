@@ -1,76 +1,93 @@
 import { useEffect, useState } from "react";
+import { App, Button, Form, Input, Modal, Select, Table, Tag, Tooltip, message } from "antd";
+import type { TableColumnsType } from "antd";
+import { useAuth } from "../context/AuthContext";
 import {
-  Table,
-  Tag,
-  Button,
-  message,
-  Modal,
-  Form,
-  Input,
-  Select,
-  App,
-} from "antd";
-import axios from "../api/axios";
+  createUser,
+  deleteUser,
+  demoteUser,
+  getUsers,
+  promoteUser,
+  updateUser,
+} from "../api/users";
+import { getErrorMessage } from "../api/errors";
+import { ROLE_ADMIN, ROLE_USER } from "../types";
+import type { User } from "../types";
 
-interface User {
-  id: string;
+interface UserFormValues {
   name: string;
   email: string;
-  phone: string;
+  phone?: string;
+  password?: string;
   role: string;
 }
 
+const roleOf = (user: User) => (user.roles?.includes(ROLE_ADMIN) ? ROLE_ADMIN : ROLE_USER);
+
 export default function AdminUsers() {
-  const { modal } = App.useApp(); // ✅ React 18‑compatible modal context
+  const { modal } = App.useApp();
+  const { user: currentUser } = useAuth();
+
   const [users, setUsers] = useState<User[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
-  const [form] = Form.useForm();
+  const [formKey, setFormKey] = useState(0);
+  const [form] = Form.useForm<UserFormValues>();
 
   // ---------------------------------------------------------
   // LOAD USERS
   // ---------------------------------------------------------
-  async function loadUsers() {
+  useEffect(() => {
+    let active = true;
+
+    getUsers()
+      .then((data) => {
+        if (active) setUsers(data);
+      })
+      .catch((err) => message.error(getErrorMessage(err, "Failed to load users")))
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const loadUsers = async () => {
+    setLoading(true);
     try {
-      setLoading(true);
-      const res = await axios.get("/api/users");
-
-      const mapped = res.data.map((u: any) => ({
-        ...u,
-        role: Array.isArray(u.roles) ? u.roles[0] : u.role,
-      }));
-
-      setUsers(mapped);
-    } catch {
-      message.error("Failed to load users");
+      setUsers(await getUsers());
+    } catch (err) {
+      message.error(getErrorMessage(err, "Failed to load users"));
     } finally {
       setLoading(false);
     }
-  }
-
-  useEffect(() => {
-    loadUsers();
-  }, []);
+  };
 
   // ---------------------------------------------------------
   // OPEN MODAL (CREATE or EDIT)
+  // The form is filled through `initialValues` + `preserve={false}` (see below), NOT with
+  // form.setFieldsValue(): the form does not exist yet when this runs, and React StrictMode
+  // (used in dev) would wipe values that were set before it mounted.
   // ---------------------------------------------------------
   const openModal = (user?: User) => {
-    if (user) {
-      setEditingUser(user);
-      form.setFieldsValue({
-        name: user.name,
-        email: user.email,
-        phone: user.phone,
-        role: user.role,
-      });
-    } else {
-      setEditingUser(null);
-      form.resetFields();
-    }
+    setEditingUser(user ?? null);
+    setFormKey((k) => k + 1); // fresh form every time the modal opens
     setModalVisible(true);
   };
+
+  // every field is listed (even when empty) so nothing from a previous open can leak into this one
+  const initialValues: Partial<UserFormValues> = editingUser
+    ? {
+        name: editingUser.name,
+        email: editingUser.email,
+        phone: editingUser.phone ?? "",
+        role: roleOf(editingUser),
+      }
+    : { name: "", email: "", phone: "", password: "", role: ROLE_USER };
 
   // ---------------------------------------------------------
   // SAVE USER (CREATE or UPDATE)
@@ -78,28 +95,52 @@ export default function AdminUsers() {
   const saveUser = async () => {
     try {
       const values = await form.validateFields();
-      const payload = { ...values, role: values.role };
+      setSaving(true);
 
       if (editingUser) {
-        await axios.put(`/api/users/${editingUser.id}`, payload);
+        // 1) profile fields
+        await updateUser(editingUser.id, {
+          name: values.name.trim(),
+          email: values.email.trim(),
+          phone: values.phone?.trim(),
+        });
+
+        // 2) role changes use their own admin-only endpoints
+        const wasAdmin = roleOf(editingUser) === ROLE_ADMIN;
+        const wantsAdmin = values.role === ROLE_ADMIN;
+        if (wantsAdmin && !wasAdmin) {
+          await promoteUser(editingUser.id);
+        } else if (!wantsAdmin && wasAdmin) {
+          await demoteUser(editingUser.id);
+        }
+
         message.success("User updated");
       } else {
-        await axios.post("/api/users", payload);
+        await createUser({
+          name: values.name.trim(),
+          email: values.email.trim(),
+          phone: values.phone?.trim(),
+          password: values.password ?? "",
+          roles: [values.role],
+        });
         message.success("User created");
       }
 
       setModalVisible(false);
       loadUsers();
-    } catch (err: any) {
-      const msg = err?.response?.data?.message || "Failed to save user";
-      message.error(msg);
+    } catch (err) {
+      // form validation failures have no response; show nothing extra for those
+      if (err && typeof err === "object" && "errorFields" in err) return;
+      message.error(getErrorMessage(err, "Failed to save user"));
+    } finally {
+      setSaving(false);
     }
   };
 
   // ---------------------------------------------------------
-  // DELETE USER (React 18‑safe)
+  // DELETE USER
   // ---------------------------------------------------------
-  const deleteUser = (user: User) => {
+  const handleDelete = (user: User) => {
     modal.confirm({
       title: `Delete ${user.name}?`,
       content: `This will permanently remove ${user.email}.`,
@@ -107,31 +148,33 @@ export default function AdminUsers() {
       okType: "danger",
       onOk: async () => {
         try {
-          await axios.delete(`/api/users/${user.id}`);
+          await deleteUser(user.id);
           message.success("User deleted");
           loadUsers();
-        } catch {
-          message.error("Failed to delete user");
+        } catch (err) {
+          message.error(getErrorMessage(err, "Failed to delete user"));
         }
       },
     });
   };
 
+  const editingSelf = !!editingUser && editingUser.id === currentUser?.id;
+
   // ---------------------------------------------------------
   // TABLE COLUMNS
   // ---------------------------------------------------------
-  const columns = [
+  const columns: TableColumnsType<User> = [
     {
       title: "Name",
       dataIndex: "name",
       key: "name",
-      sorter: (a: User, b: User) => a.name.localeCompare(b.name),
+      sorter: (a, b) => a.name.localeCompare(b.name),
     },
     {
       title: "Email",
       dataIndex: "email",
       key: "email",
-      sorter: (a: User, b: User) => a.email.localeCompare(b.email),
+      sorter: (a, b) => a.email.localeCompare(b.email),
     },
     {
       title: "Phone",
@@ -140,30 +183,35 @@ export default function AdminUsers() {
     },
     {
       title: "Role",
-      dataIndex: "role",
       key: "role",
-      render: (role: string | undefined) => {
-        const safeRole = role || "ROLE_USER";
-        return (
-          <Tag color={safeRole === "ROLE_ADMIN" ? "red" : "blue"}>
-            {safeRole.replace("ROLE_", "")}
-          </Tag>
-        );
+      filters: [
+        { text: "Admin", value: ROLE_ADMIN },
+        { text: "User", value: ROLE_USER },
+      ],
+      onFilter: (value, record) => roleOf(record) === value,
+      render: (_, user) => {
+        const role = roleOf(user);
+        return <Tag color={role === ROLE_ADMIN ? "red" : "blue"}>{role.replace("ROLE_", "")}</Tag>;
       },
     },
     {
       title: "Actions",
       key: "actions",
-      render: (_: any, user: User) => (
-        <div style={{ display: "flex", gap: 8 }}>
-          <Button size="small" onClick={() => openModal(user)}>
-            Edit
-          </Button>
-          <Button danger size="small" onClick={() => deleteUser(user)}>
-            Delete
-          </Button>
-        </div>
-      ),
+      render: (_, user) => {
+        const isSelf = user.id === currentUser?.id;
+        return (
+          <div style={{ display: "flex", gap: 8 }}>
+            <Button size="small" onClick={() => openModal(user)}>
+              Edit
+            </Button>
+            <Tooltip title={isSelf ? "You cannot delete your own account" : undefined}>
+              <Button danger size="small" disabled={isSelf} onClick={() => handleDelete(user)}>
+                Delete
+              </Button>
+            </Tooltip>
+          </div>
+        );
+      },
     },
   ];
 
@@ -188,7 +236,7 @@ export default function AdminUsers() {
         </div>
       </div>
 
-      <Table
+      <Table<User>
         columns={columns}
         dataSource={users}
         rowKey="id"
@@ -203,13 +251,21 @@ export default function AdminUsers() {
         open={modalVisible}
         onCancel={() => setModalVisible(false)}
         onOk={saveUser}
+        confirmLoading={saving}
         okText={editingUser ? "Save Changes" : "Create User"}
+        destroyOnHidden
       >
-        <Form form={form} layout="vertical">
+        <Form
+          key={formKey}
+          form={form}
+          layout="vertical"
+          initialValues={initialValues}
+          preserve={false} // forget values on close so the next open starts from initialValues
+        >
           <Form.Item
             name="name"
             label="Full Name"
-            rules={[{ required: true, message: "Name is required" }]}
+            rules={[{ required: true, whitespace: true, message: "Name is required" }]}
           >
             <Input placeholder="Enter full name" />
           </Form.Item>
@@ -225,23 +281,36 @@ export default function AdminUsers() {
             <Input placeholder="Enter email" />
           </Form.Item>
 
-          <Form.Item
-            name="phone"
-            label="Phone"
-            rules={[{ required: true, message: "Phone is required" }]}
-          >
+          <Form.Item name="phone" label="Phone">
             <Input placeholder="Enter phone number" />
           </Form.Item>
+
+          {/* the backend requires an initial password for new users */}
+          {!editingUser && (
+            <Form.Item
+              name="password"
+              label="Initial Password"
+              rules={[
+                { required: true, message: "Password is required" },
+                { min: 8, message: "Password must be at least 8 characters" },
+                { max: 72, message: "Password must be at most 72 characters" },
+              ]}
+            >
+              <Input.Password placeholder="At least 8 characters" autoComplete="new-password" />
+            </Form.Item>
+          )}
 
           <Form.Item
             name="role"
             label="Role"
             rules={[{ required: true, message: "Select a role" }]}
+            extra={editingSelf ? "You cannot change your own role." : undefined}
           >
             <Select
+              disabled={editingSelf}
               options={[
-                { value: "ROLE_USER", label: "User" },
-                { value: "ROLE_ADMIN", label: "Admin" },
+                { value: ROLE_USER, label: "User" },
+                { value: ROLE_ADMIN, label: "Admin" },
               ]}
               placeholder="Select role"
               style={{ width: "100%" }}

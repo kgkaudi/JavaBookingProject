@@ -3,7 +3,7 @@ import { useAuth } from "../context/AuthContext";
 import { Link } from "react-router-dom";
 
 export default function Dashboard() {
-  const { user, isAdmin, isUser } = useAuth();
+  const { user, isAdmin } = useAuth();
 
   return (
     <div
@@ -13,10 +13,7 @@ export default function Dashboard() {
         justifyContent: "center",
       }}
     >
-      <Card
-        title={`Welcome, ${user?.name || "User"}`}
-        style={{ width: 600 }}
-      >
+      <Card title={`Welcome, ${user?.name || "User"}`} style={{ width: 600 }}>
         <p style={{ marginBottom: 16 }}>
           <strong>Email:</strong> {user?.email}
         </p>

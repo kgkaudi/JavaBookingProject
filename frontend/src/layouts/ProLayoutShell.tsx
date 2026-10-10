@@ -5,7 +5,6 @@ import {
   HomeOutlined,
   BookOutlined,
   UserOutlined,
-  SettingOutlined,
   MoonOutlined,
   SunOutlined,
   TeamOutlined,
@@ -14,11 +13,27 @@ import {
 import { Avatar, Dropdown, message } from "antd";
 import { useAuth } from "../context/AuthContext";
 
-export default function ProLayoutShell({ setDarkMode, darkMode }) {
+const BREADCRUMB_NAMES: Record<string, string> = {
+  "/": "Home",
+  "/rooms": "Rooms",
+  "/bookings": "Bookings",
+  "/profile": "Profile",
+  "/admin": "Admin Panel",
+  "/admin/users": "Users",
+  "/admin/rooms": "Rooms",
+  "/admin/bookings": "Bookings",
+};
+
+interface ProLayoutShellProps {
+  setDarkMode: (value: boolean) => void;
+  darkMode: boolean;
+}
+
+export default function ProLayoutShell({ setDarkMode, darkMode }: ProLayoutShellProps) {
   const navigate = useNavigate();
   const { user, isAdmin, logout } = useAuth();
 
-  const initial = user?.user?.name?.charAt(0)?.toUpperCase() || "?";
+  const initial = user?.name?.charAt(0)?.toUpperCase() || "?";
 
   const avatarMenu = {
     items: [
@@ -29,17 +44,11 @@ export default function ProLayoutShell({ setDarkMode, darkMode }) {
         onClick: () => navigate("/profile"),
       },
       {
-        key: "settings",
-        icon: <SettingOutlined />,
-        label: "Settings",
-        onClick: () => navigate("/settings"),
-      },
-      {
         key: "logout",
         icon: <LogoutOutlined />,
         label: "Logout",
-        onClick: () => {
-          logout();
+        onClick: async () => {
+          await logout(); // also invalidates the token on the server
           message.info("Logged out");
           navigate("/login");
         },
@@ -76,7 +85,7 @@ export default function ProLayoutShell({ setDarkMode, darkMode }) {
       logo="/booking.svg"
       layout="mix"
       fixedHeader
-      navTheme={darkMode ? "dark" : "light"}
+      navTheme={darkMode ? "realDark" : "light"}
       contentStyle={{ minHeight: "calc(100vh - 64px)", padding: 24 }}
       route={{
         path: "/",
@@ -85,26 +94,13 @@ export default function ProLayoutShell({ setDarkMode, darkMode }) {
       menuItemRender={(item, dom) => <Link to={item.path || "/"}>{dom}</Link>}
       breadcrumbRender={(routers = []) =>
         routers.map((r) => {
-          const nameMap: Record<string, string> = {
-            "/": "Home",
-            "/rooms": "Rooms",
-            "/bookings": "Bookings",
-            "/profile": "Profile",
-            "/admin": "Admin Panel",
-            "/admin/users": "Users",
-            "/admin/rooms": "Rooms",
-            "/admin/bookings": "Bookings",
-          };
+          const path = r.path ?? "";
 
-          if (r.path?.startsWith("/rooms/")) {
-            const id = r.path.split("/")[2];
-            return { ...r, breadcrumbName: `Room ${id}` };
+          if (path.startsWith("/rooms/")) {
+            return { ...r, breadcrumbName: `Room ${path.split("/")[2]}` };
           }
 
-          return {
-            ...r,
-            breadcrumbName: nameMap[r.path] || r.breadcrumbName || r.name,
-          };
+          return { ...r, breadcrumbName: BREADCRUMB_NAMES[path] ?? r.breadcrumbName };
         })
       }
       actionsRender={() => [

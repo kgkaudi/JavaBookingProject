@@ -1,53 +1,52 @@
 import { useEffect, useState } from "react";
-import { Table, Tag, Button, message } from "antd";
-import axios from "../api/axios";
 import { Link } from "react-router-dom";
-
-interface Room {
-  id: string;
-  roomNumber: number;
-  capacity: number;
-  type: string;
-  price: number;
-  available: boolean;
-}
+import { Button, Table, Tag, message } from "antd";
+import type { TableColumnsType } from "antd";
+import { getRooms } from "../api/rooms";
+import { getErrorMessage } from "../api/errors";
+import type { Room } from "../types";
 
 export default function Rooms() {
   const [rooms, setRooms] = useState<Room[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  // ---------------------------------------------------------
-  // LOAD ROOMS
-  // ---------------------------------------------------------
-  async function loadRooms() {
+  // initial load
+  useEffect(() => {
+    let active = true;
+
+    getRooms()
+      .then((data) => {
+        if (active) setRooms(data);
+      })
+      .catch((err) => message.error(getErrorMessage(err, "Failed to load rooms")))
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  // manual refresh
+  const refresh = async () => {
+    setLoading(true);
     try {
-      setLoading(true);
-      const res = await axios.get("/api/rooms");
-      setRooms(res.data);
-    } catch {
-      message.error("Failed to load rooms");
+      setRooms(await getRooms());
+    } catch (err) {
+      message.error(getErrorMessage(err, "Failed to load rooms"));
     } finally {
       setLoading(false);
     }
-  }
+  };
 
-  useEffect(() => {
-    loadRooms();
-  }, []);
-
-  // ---------------------------------------------------------
-  // TABLE COLUMNS (with responsive breakpoints)
-  // ---------------------------------------------------------
-  const columns = [
+  const columns: TableColumnsType<Room> = [
     {
       title: "Room Number",
       dataIndex: "roomNumber",
       key: "roomNumber",
-      sorter: (a: Room, b: Room) => a.roomNumber - b.roomNumber,
-      responsive: ["xs", "sm", "md", "lg"],
-      render: (_: any, room: Room) => (
-        <Link to={`/rooms/${room.id}`}>Room {room.roomNumber}</Link>
-      ),
+      sorter: (a, b) => a.roomNumber - b.roomNumber,
+      render: (_, room) => <Link to={`/rooms/${room.id}`}>Room {room.roomNumber}</Link>,
     },
     {
       title: "Type",
@@ -59,45 +58,38 @@ export default function Rooms() {
         { text: "Double", value: "double" },
         { text: "Suite", value: "suite" },
       ],
-      onFilter: (value: string, record: Room) =>
-        record.type.toLowerCase() === value.toLowerCase(),
+      onFilter: (value, record) => record.type.toLowerCase() === String(value).toLowerCase(),
     },
     {
       title: "Capacity",
       dataIndex: "capacity",
       key: "capacity",
-      responsive: ["md", "lg"], // hide on phones
-      sorter: (a: Room, b: Room) => a.capacity - b.capacity,
+      responsive: ["md", "lg"],
+      sorter: (a, b) => a.capacity - b.capacity,
     },
     {
-      title: "Price (€)",
+      title: "Price / night (€)",
       dataIndex: "price",
       key: "price",
-      responsive: ["md", "lg"], // hide on phones
-      sorter: (a: Room, b: Room) => a.price - b.price,
+      responsive: ["md", "lg"],
+      sorter: (a, b) => a.price - b.price,
     },
     {
       title: "Status",
       dataIndex: "available",
       key: "available",
-      responsive: ["xs", "sm", "md", "lg"],
       filters: [
         { text: "Available", value: true },
-        { text: "Booked", value: false },
+        { text: "Unavailable", value: false },
       ],
-      onFilter: (value: boolean, record: Room) => record.available === value,
+      onFilter: (value, record) => record.available === value,
       render: (available: boolean) =>
-        available ? (
-          <Tag color="green">Available</Tag>
-        ) : (
-          <Tag color="red">Booked</Tag>
-        ),
+        available ? <Tag color="green">Available</Tag> : <Tag color="red">Unavailable</Tag>,
     },
     {
       title: "Action",
       key: "action",
-      responsive: ["xs", "sm", "md", "lg"],
-      render: (_: any, room: Room) =>
+      render: (_, room) =>
         room.available ? (
           <Link to={`/bookings?roomId=${room.id}`}>
             <Button type="primary" size="small">
@@ -124,17 +116,17 @@ export default function Rooms() {
         }}
       >
         <h2 style={{ margin: 0 }}>Rooms</h2>
-        <Button onClick={loadRooms}>Refresh</Button>
+        <Button onClick={refresh}>Refresh</Button>
       </div>
 
-      <Table
+      <Table<Room>
         columns={columns}
         dataSource={rooms}
         rowKey="id"
         loading={loading}
-        size="small" // compact for mobile
+        size="small"
         pagination={{ pageSize: 10 }}
-        scroll={{ x: "max-content" }} // horizontal scroll on mobile
+        scroll={{ x: "max-content" }}
       />
     </div>
   );

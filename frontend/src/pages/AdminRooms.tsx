@@ -1,68 +1,77 @@
 import { useEffect, useState } from "react";
-import {
-  Table,
-  Tag,
-  Button,
-  message,
-  Modal,
-  Form,
-  InputNumber,
-  Select,
-  App,
-} from "antd";
-import axios from "../api/axios";
-
-interface Room {
-  id: string;
-  roomNumber: number;
-  capacity: number;
-  type: string;
-  price: number;
-  available: boolean;
-}
+import { App, Button, Form, InputNumber, Modal, Select, Switch, Table, Tag, message } from "antd";
+import type { TableColumnsType } from "antd";
+import { createRoom, deleteRoom, getRooms, updateRoom } from "../api/rooms";
+import { getErrorMessage } from "../api/errors";
+import type { Room, RoomInput } from "../types";
 
 export default function AdminRooms() {
-  const { modal } = App.useApp(); // ✅ React 18 compatible modal
+  const { modal } = App.useApp();
+
   const [rooms, setRooms] = useState<Room[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
   const [modalVisible, setModalVisible] = useState(false);
   const [editingRoom, setEditingRoom] = useState<Room | null>(null);
+  const [formKey, setFormKey] = useState(0);
 
-  const [form] = Form.useForm();
+  const [form] = Form.useForm<RoomInput>();
 
   // ---------------------------------------------------------
   // LOAD ROOMS
   // ---------------------------------------------------------
-  async function loadRooms() {
+  useEffect(() => {
+    let active = true;
+
+    getRooms()
+      .then((data) => {
+        if (active) setRooms(data);
+      })
+      .catch((err) => message.error(getErrorMessage(err, "Failed to load rooms")))
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const loadRooms = async () => {
+    setLoading(true);
     try {
-      setLoading(true);
-      const res = await axios.get("/api/rooms");
-      setRooms(res.data);
-    } catch {
-      message.error("Failed to load rooms");
+      setRooms(await getRooms());
+    } catch (err) {
+      message.error(getErrorMessage(err, "Failed to load rooms"));
     } finally {
       setLoading(false);
     }
-  }
-
-  useEffect(() => {
-    loadRooms();
-  }, []);
+  };
 
   // ---------------------------------------------------------
   // OPEN MODAL (CREATE or EDIT)
+  // The form is filled through `initialValues` + `preserve={false}` (see below), NOT with
+  // form.setFieldsValue(): the form does not exist yet when this runs, and React StrictMode
+  // (used in dev) would wipe values that were set before it mounted.
   // ---------------------------------------------------------
   const openModal = (room?: Room) => {
-    if (room) {
-      setEditingRoom(room);
-      form.setFieldsValue(room);
-    } else {
-      setEditingRoom(null);
-      form.resetFields();
-    }
+    setEditingRoom(room ?? null);
+    setFormKey((k) => k + 1); // fresh form every time the modal opens
     setModalVisible(true);
   };
+
+  // every field is listed (even when empty) so nothing from a previous open can leak into this one;
+  // new rooms are bookable unless the admin says otherwise
+  const initialValues: Partial<RoomInput> = editingRoom
+    ? {
+        roomNumber: editingRoom.roomNumber,
+        type: editingRoom.type,
+        capacity: editingRoom.capacity,
+        price: editingRoom.price,
+        available: editingRoom.available,
+      }
+    : { roomNumber: undefined, type: undefined, capacity: undefined, price: undefined, available: true };
 
   // ---------------------------------------------------------
   // SAVE ROOM
@@ -70,27 +79,31 @@ export default function AdminRooms() {
   const saveRoom = async () => {
     try {
       const values = await form.validateFields();
+      setSaving(true);
 
       if (editingRoom) {
-        await axios.put(`/api/rooms/${editingRoom.id}`, values);
+        await updateRoom(editingRoom.id, values);
         message.success("Room updated");
       } else {
-        await axios.post("/api/rooms", values);
+        await createRoom(values);
         message.success("Room created");
       }
 
       setModalVisible(false);
       loadRooms();
-    } catch (err: any) {
-      const msg = err?.response?.data?.message || "Failed to save room";
-      message.error(msg);
+    } catch (err) {
+      if (err && typeof err === "object" && "errorFields" in err) return; // form validation
+      // e.g. 409 "Room number already exists" or field errors from the backend
+      message.error(getErrorMessage(err, "Failed to save room"));
+    } finally {
+      setSaving(false);
     }
   };
 
   // ---------------------------------------------------------
-  // DELETE ROOM (React 18 safe)
+  // DELETE ROOM
   // ---------------------------------------------------------
-  const deleteRoom = (room: Room) => {
+  const handleDelete = (room: Room) => {
     modal.confirm({
       title: `Delete Room ${room.roomNumber}?`,
       content: `This will permanently remove room ${room.roomNumber}.`,
@@ -98,40 +111,44 @@ export default function AdminRooms() {
       okType: "danger",
       onOk: async () => {
         try {
-          await axios.delete(`/api/rooms/${room.id}`);
+          await deleteRoom(room.id);
           message.success("Room deleted");
           loadRooms();
-        } catch {
-          message.error("Failed to delete room");
+        } catch (err) {
+          message.error(getErrorMessage(err, "Failed to delete room"));
         }
       },
     });
   };
 
   // ---------------------------------------------------------
-  // TOGGLE AVAILABILITY
+  // TOGGLE AVAILABILITY (the backend has no dedicated endpoint: update the room)
   // ---------------------------------------------------------
   const toggleAvailability = async (room: Room) => {
     try {
-      await axios.patch(`/api/rooms/${room.id}/availability`, {
+      await updateRoom(room.id, {
+        roomNumber: room.roomNumber,
+        type: room.type,
+        capacity: room.capacity,
+        price: room.price,
         available: !room.available,
       });
       message.success("Room availability updated");
       loadRooms();
-    } catch {
-      message.error("Failed to update availability");
+    } catch (err) {
+      message.error(getErrorMessage(err, "Failed to update availability"));
     }
   };
 
   // ---------------------------------------------------------
   // TABLE COLUMNS
   // ---------------------------------------------------------
-  const columns = [
+  const columns: TableColumnsType<Room> = [
     {
       title: "Room Number",
       dataIndex: "roomNumber",
       key: "roomNumber",
-      sorter: (a: Room, b: Room) => a.roomNumber - b.roomNumber,
+      sorter: (a, b) => a.roomNumber - b.roomNumber,
     },
     {
       title: "Type",
@@ -142,20 +159,19 @@ export default function AdminRooms() {
         { text: "Double", value: "double" },
         { text: "Suite", value: "suite" },
       ],
-      onFilter: (value: string, record: Room) =>
-        record.type.toLowerCase() === value.toLowerCase(),
+      onFilter: (value, record) => record.type.toLowerCase() === String(value).toLowerCase(),
     },
     {
       title: "Capacity",
       dataIndex: "capacity",
       key: "capacity",
-      sorter: (a: Room, b: Room) => a.capacity - b.capacity,
+      sorter: (a, b) => a.capacity - b.capacity,
     },
     {
-      title: "Price (€)",
+      title: "Price / night (€)",
       dataIndex: "price",
       key: "price",
-      sorter: (a: Room, b: Room) => a.price - b.price,
+      sorter: (a, b) => a.price - b.price,
     },
     {
       title: "Status",
@@ -163,20 +179,16 @@ export default function AdminRooms() {
       key: "available",
       filters: [
         { text: "Available", value: true },
-        { text: "Booked", value: false },
+        { text: "Unavailable", value: false },
       ],
-      onFilter: (value: boolean, record: Room) => record.available === value,
+      onFilter: (value, record) => record.available === value,
       render: (available: boolean) =>
-        available ? (
-          <Tag color="green">Available</Tag>
-        ) : (
-          <Tag color="red">Booked</Tag>
-        ),
+        available ? <Tag color="green">Available</Tag> : <Tag color="red">Unavailable</Tag>,
     },
     {
       title: "Actions",
       key: "actions",
-      render: (_: any, room: Room) => (
+      render: (_, room) => (
         <div style={{ display: "flex", gap: 8 }}>
           <Button size="small" onClick={() => openModal(room)}>
             Edit
@@ -187,10 +199,10 @@ export default function AdminRooms() {
             onClick={() => toggleAvailability(room)}
             type={room.available ? "default" : "primary"}
           >
-            {room.available ? "Mark Booked" : "Mark Available"}
+            {room.available ? "Mark Unavailable" : "Mark Available"}
           </Button>
 
-          <Button danger size="small" onClick={() => deleteRoom(room)}>
+          <Button danger size="small" onClick={() => handleDelete(room)}>
             Delete
           </Button>
         </div>
@@ -219,7 +231,7 @@ export default function AdminRooms() {
         </div>
       </div>
 
-      <Table
+      <Table<Room>
         columns={columns}
         dataSource={rooms}
         rowKey="id"
@@ -234,15 +246,23 @@ export default function AdminRooms() {
         open={modalVisible}
         onCancel={() => setModalVisible(false)}
         onOk={saveRoom}
+        confirmLoading={saving}
         okText={editingRoom ? "Save Changes" : "Create Room"}
+        destroyOnHidden
       >
-        <Form form={form} layout="vertical">
+        <Form
+          key={formKey}
+          form={form}
+          layout="vertical"
+          initialValues={initialValues}
+          preserve={false} // forget values on close so the next open starts from initialValues
+        >
           <Form.Item
             name="roomNumber"
             label="Room Number"
             rules={[{ required: true, message: "Room number is required" }]}
           >
-            <InputNumber min={1} style={{ width: "100%" }} />
+            <InputNumber min={1} precision={0} style={{ width: "100%" }} />
           </Form.Item>
 
           <Form.Item
@@ -264,15 +284,19 @@ export default function AdminRooms() {
             label="Capacity"
             rules={[{ required: true, message: "Capacity is required" }]}
           >
-            <InputNumber min={1} style={{ width: "100%" }} />
+            <InputNumber min={1} precision={0} style={{ width: "100%" }} />
           </Form.Item>
 
           <Form.Item
             name="price"
-            label="Price (€)"
+            label="Price per night (€)"
             rules={[{ required: true, message: "Price is required" }]}
           >
-            <InputNumber min={1} style={{ width: "100%" }} />
+            <InputNumber min={0.01} step={5} precision={2} style={{ width: "100%" }} />
+          </Form.Item>
+
+          <Form.Item name="available" label="Available for booking" valuePropName="checked">
+            <Switch />
           </Form.Item>
         </Form>
       </Modal>
