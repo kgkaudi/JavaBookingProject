@@ -1,0 +1,33 @@
+# =====================================================================================
+#  FOR PLAIN DOCKER ENGINE ON LINUX ONLY (not Docker Desktop, not Mac/Windows)
+#
+#  Lets the backend share your computer's network, so it reaches the MongoDB on
+#  localhost:27017 directly - no mongod.conf changes needed.
+#
+#    docker compose -f docker-compose.yml -f docker-compose.hostnet.yml up --build -d
+#
+#  Needs Docker Compose 2.24 or newer (check: docker compose version).
+# =====================================================================================
+services:
+  backend:
+    network_mode: host # the API is then available on this computer's port 8080
+    ports: !reset []
+    extra_hosts: !reset []
+    environment:
+      SPRING_DATA_MONGODB_URI: mongodb://localhost:27017/KostasEvents
+
+  frontend:
+    environment:
+      # the backend now runs on the host network, so reach it through the host gateway
+      BACKEND_URL: http://host.docker.internal:8080
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  mongo-express:
+    network_mode: host
+    ports: !reset []
+    extra_hosts: !reset []
+    environment:
+      ME_CONFIG_MONGODB_URL: mongodb://localhost:27017
+      VCAP_APP_HOST: 127.0.0.1 # only reachable from this computer
+      PORT: "8081"

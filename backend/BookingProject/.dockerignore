@@ -1,0 +1,12 @@
+target
+.git
+.gitignore
+.idea
+.vscode
+*.iml
+.mvn
+mvnw
+mvnw.cmd
+readme.md
+# local secrets must never end up inside an image
+src/main/resources/application-local.properties

@@ -1,0 +1,79 @@
+# =====================================================================================
+#  STANDALONE MODE - everything in containers, including its own MongoDB.
+#  Works on Linux, macOS and Windows (Docker Desktop).
+#
+#    ./scripts/init-env.sh
+#    docker compose -f docker-compose.standalone.yml up --build -d
+#    ./scripts/import-local-db.sh       # optional: copy your current local database into it
+#    open http://localhost:5173
+#
+#  Database browser:  docker compose -f docker-compose.standalone.yml --profile tools up -d
+# =====================================================================================
+name: javabooking-standalone
+
+services:
+  mongo:
+    image: ${MONGO_IMAGE:-mongo:7}
+    restart: unless-stopped
+    volumes:
+      - mongo-data:/data/db
+    ports:
+      # 27018 on this computer, so it never clashes with a MongoDB already running on 27017.
+      # Connect Compass / mongosh with  mongodb://localhost:27018
+      - "127.0.0.1:${MONGO_PORT:-27018}:27017"
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+
+  backend:
+    build:
+      context: ./backend/BookingProject
+    image: javabooking-backend
+    restart: unless-stopped
+    depends_on:
+      mongo:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:8080:8080" # handy for debugging; the app itself goes through nginx
+    environment:
+      SPRING_DATA_MONGODB_URI: mongodb://mongo:27017/KostasEvents
+      SPRING_DATA_MONGODB_DATABASE: ${MONGODB_DATABASE:-JavaBookingProject}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is not set - run ./scripts/init-env.sh}
+      JWT_EXPIRATION_MS: ${JWT_EXPIRATION_MS:-86400000}
+      CORS_ALLOWED_ORIGINS: http://localhost:${FRONTEND_PORT:-5173}
+      SEED_ENABLED: ${SEED_ENABLED:-false}
+      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-}
+      SEED_TEST_USER_PASSWORD: ${SEED_TEST_USER_PASSWORD:-}
+
+  frontend:
+    build:
+      context: ./frontend
+    image: javabooking-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "${FRONTEND_PORT:-5173}:80"
+    environment:
+      BACKEND_URL: http://backend:8080
+
+  mongo-express:
+    profiles: ["tools"]
+    image: mongo-express:1.0.2
+    restart: unless-stopped
+    depends_on:
+      mongo:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:8081:8081"
+    environment:
+      ME_CONFIG_MONGODB_URL: mongodb://mongo:27017
+      ME_CONFIG_MONGODB_ENABLE_ADMIN: "true"
+      ME_CONFIG_BASICAUTH_USERNAME: ${MONGO_EXPRESS_USER:-admin}
+      ME_CONFIG_BASICAUTH_PASSWORD: ${MONGO_EXPRESS_PASSWORD:-change-me}
+
+volumes:
+  mongo-data:

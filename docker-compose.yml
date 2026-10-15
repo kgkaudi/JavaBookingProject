@@ -1,0 +1,63 @@
+# =====================================================================================
+#  DEFAULT MODE - run the app against the MongoDB that is already running on THIS computer
+#
+#    ./scripts/init-env.sh              # once: creates .env with a random JWT secret
+#    docker compose up --build -d
+#    open http://localhost:5173
+#
+#  Database browser (http://localhost:8081):  docker compose --profile tools up -d
+#
+#  The containers reach your computer through the name "host.docker.internal".
+#  Test that connection first (takes a few seconds, see DOCKER.md). If it fails, use
+#  docker-compose.standalone.yml + ./scripts/import-local-db.sh, which always works.
+# =====================================================================================
+name: javabooking
+
+services:
+  backend:
+    build:
+      context: ./backend/BookingProject
+    image: javabooking-backend
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8080:8080" # for debugging only; the website reaches it through nginx
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      # server + database. Inside a container "localhost" is the container itself,
+      # so your computer's MongoDB is reached as host.docker.internal.
+      SPRING_DATA_MONGODB_URI: ${LOCAL_MONGODB_URI:-mongodb://host.docker.internal:27017/KostasEvents}
+      SPRING_DATA_MONGODB_DATABASE: ${MONGODB_DATABASE:-JavaBookingProject}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is not set - run ./scripts/init-env.sh}
+      JWT_EXPIRATION_MS: ${JWT_EXPIRATION_MS:-86400000}
+      CORS_ALLOWED_ORIGINS: http://localhost:${FRONTEND_PORT:-5173}
+      SEED_ENABLED: ${SEED_ENABLED:-false}
+      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-}
+      SEED_TEST_USER_PASSWORD: ${SEED_TEST_USER_PASSWORD:-}
+
+  frontend:
+    build:
+      context: ./frontend
+    image: javabooking-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "${FRONTEND_PORT:-5173}:80"
+    environment:
+      BACKEND_URL: http://backend:8080
+
+  # Optional web UI to look at the database. Start with:  docker compose --profile tools up -d
+  mongo-express:
+    profiles: ["tools"]
+    image: mongo-express:1.0.2
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8081:8081" # only reachable from this computer
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      ME_CONFIG_MONGODB_URL: mongodb://host.docker.internal:27017
+      ME_CONFIG_MONGODB_ENABLE_ADMIN: "true" # lets you pick any database on the server
+      ME_CONFIG_BASICAUTH_USERNAME: ${MONGO_EXPRESS_USER:-admin}
+      ME_CONFIG_BASICAUTH_PASSWORD: ${MONGO_EXPRESS_PASSWORD:-change-me}
